@@ -1,0 +1,621 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Chef on Call</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: phone-first app — sticky header, one column of cards, bottom tab bar that changes per side (client / chef / plan). */
+  :root {
+    --bg: #f4f5f1; --card: #ffffff; --ink: #14231c; --muted: #5f6b64; --line: #e1e4dd;
+    --accent: #d9921a; --accent-ink: #ffffff; --accent-soft: #fbf0dc;
+    --head: #14231c; --head-ink: #f4f5f1; --head-muted: #a9b5ae;
+    --good: #2c7a4b; --warn: #b26b00; --bad: #b3372f; --chip: #eceee8;
+    --overlay: rgba(10, 18, 14, .55);
+    --display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
+    --body: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+    --r: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1512; --card: #18201c; --ink: #e9eee9; --muted: #98a59d; --line: #2a342f;
+      --accent-soft: #3a2c12; --head: #0a0f0c; --chip: #222b26; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1512; --card: #18201c; --ink: #e9eee9; --muted: #98a59d; --line: #2a342f;
+    --accent-soft: #3a2c12; --head: #0a0f0c; --chip: #222b26; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); margin: 0;
+    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--head); }
+  h1, h2, h3 { font-family: var(--display); letter-spacing: -.01em; text-wrap: balance; margin: 0; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; background: var(--head); color: var(--head-ink);
+    padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .top-in { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+  .mark { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 800 15px var(--display); flex: none; }
+  .brand { font: 800 18px var(--display); }
+  .side { margin-left: auto; display: flex; background: rgba(255,255,255,.08); border-radius: 99px; padding: 3px; }
+  .side button { border: 0; background: none; color: var(--head-muted); font-size: 13px; font-weight: 600; padding: 6px 11px; border-radius: 99px; }
+  .side button.on { background: var(--head-ink); color: var(--head); }
+
+  main { max-width: 720px; margin: 0 auto; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+  main > * { min-width: 0; }
+  nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 6; background: var(--card); border-top: 1px solid var(--line);
+    display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  nav.tabs button { flex: 1; max-width: 180px; border: 0; background: none; padding: 9px 4px 11px; font-size: 12px; font-weight: 600; color: var(--muted); display: grid; justify-items: center; gap: 2px; }
+  nav.tabs button svg { width: 22px; height: 22px; }
+  nav.tabs button.on { color: var(--accent); }
+  .badge-dot { background: var(--bad); color: #fff; border-radius: 99px; font-size: 10px; padding: 0 5px; margin-left: 3px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
+  .stack { display: grid; gap: 10px; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .wrap { flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .muted { color: var(--muted); }
+  .sm { font-size: 13px; }
+  .xs { font-size: 12px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 99px; background: var(--chip); white-space: nowrap; }
+  .chip.on { background: var(--ink); color: var(--bg); }
+  .chip.good { color: var(--good); }
+  .chip.accent { background: var(--accent-soft); color: var(--warn); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .scroll-x { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .scroll-x > * { flex: none; }
+  .btn { border: 0; border-radius: 12px; padding: 12px 16px; min-height: 46px; font-weight: 700; background: var(--accent); color: var(--accent-ink); }
+  .btn.dark { background: var(--ink); color: var(--bg); }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn.block { width: 100%; }
+  .btn.sm { min-height: 36px; padding: 7px 12px; font-size: 14px; }
+  .back { border: 0; background: none; color: var(--accent); font-weight: 700; padding: 0; justify-self: start; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; min-height: 44px; }
+  textarea { min-height: 70px; resize: vertical; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .avatar { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font: 800 20px var(--display); color: #fff; flex: none; }
+  .avatar.lg { width: 76px; height: 76px; border-radius: 22px; font-size: 28px; }
+  .star { color: var(--accent); }
+  .hero { background: var(--head); color: var(--head-ink); border-radius: var(--r); padding: 22px 18px; display: grid; gap: 12px; }
+  .hero h1 { font-size: 30px; line-height: 1.05; }
+  .hero p { margin: 0; color: var(--head-muted); }
+  .hero .chip { background: rgba(255,255,255,.1); color: var(--head-ink); border: 0; }
+  .hero .chip.on { background: var(--accent); color: var(--accent-ink); }
+  .chef { display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%; border: 1px solid var(--line); background: var(--card); border-radius: var(--r); padding: 14px; }
+  .price { font: 800 18px var(--display); }
+  .menu-opt { border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-align: left; width: 100%; background: var(--card); display: grid; gap: 6px; }
+  .menu-opt.on { border: 2px solid var(--accent); padding: 13px; }
+  .courses { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+  .stepper { display: flex; align-items: center; gap: 12px; }
+  .stepper button { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-size: 20px; font-weight: 700; }
+  .stepper b { font: 800 24px var(--display); min-width: 36px; text-align: center; }
+  .tick { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--ink); font-weight: 500; margin: 0; }
+  .tick:last-child { border-bottom: 0; }
+  .tick input { width: 22px; height: 22px; min-height: 0; flex: none; accent-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:last-child { text-align: right; white-space: nowrap; padding-left: 10px; }
+  tr.tot td { border-bottom: 0; font-weight: 800; font-size: 17px; }
+  .note { background: var(--accent-soft); border-radius: 12px; padding: 11px 12px; font-size: 13px; }
+  .allergy { background: color-mix(in srgb, var(--bad) 12%, transparent); color: var(--bad); border-radius: 10px; padding: 8px 10px; font-weight: 600; font-size: 14px; }
+  .status { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; }
+  .status.new { background: var(--accent-soft); color: var(--warn); }
+  .status.accepted { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+  .status.declined { background: var(--chip); color: var(--muted); }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  .kpi b { display: block; font: 800 19px var(--display); }
+  .kpi span { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .bars { display: grid; gap: 8px; }
+  .bar { display: grid; grid-template-columns: 110px 1fr 70px; gap: 8px; align-items: center; font-size: 13px; }
+  .bar i { display: block; height: 12px; border-radius: 6px; background: var(--accent); }
+  .bar i.alt { background: var(--muted); }
+  .pain { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .pain:last-child { border-bottom: 0; }
+  .pain .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--warn); display: grid; place-items: center; font-weight: 800; }
+  .pain p { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
+  .sample { font-size: 11px; font-weight: 700; color: var(--muted); border: 1px dashed var(--line); border-radius: 99px; padding: 2px 8px; }
+  .done-ic { width: 64px; height: 64px; border-radius: 50%; background: var(--good); color: #fff; display: grid; place-items: center; font-size: 32px; margin: 0 auto; }
+  .empty { text-align: center; color: var(--muted); padding: 24px 8px; }
+  a { color: var(--accent); }
+  .phase { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .phase:last-child { border-bottom: 0; }
+  .phase b.when { font: 800 13px var(--display); color: var(--accent); }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; font-size: 14px; }
+  @media (max-width: 380px) { .kpis { grid-template-columns: 1fr 1fr; } .bar { grid-template-columns: 90px 1fr 62px; } }
+  @media (prefers-reduced-motion: no-preference) { main > * { animation: in .25s ease both; } @keyframes in { from { transform: translateY(6px); } } }
+</style>
+
+<header class="top"><div class="top-in">
+  <div class="mark" id="mark">C</div>
+  <div class="brand" id="brand">Chef on Call</div>
+  <div class="side" role="tablist" aria-label="Switch side">
+    <button data-side="client">Client</button><button data-side="chef">Chef</button><button data-side="plan">Plan</button>
+  </div>
+</div></header>
+<main id="app"></main>
+<nav class="tabs" id="tabs"></nav>
+
+<script>
+/* =====================================================================
+   CHEF ON CALL — prototype of a "book a chef" platform.
+   Client side: find a chef, see an all-in price, book with a deposit,
+   pre-order at pop-ups. Chef side: requests with every detail up front,
+   payouts, menus, pre-orders. Plan side: research + business plan.
+   Rebrand: change BRAND below (or Chef > Settings in the app).
+   Prototype only: data stays on this device; no real payments.
+   ===================================================================== */
+const BRAND = { name: "Chef on Call", currency: "$", feePct: 10, depositPct: 30, rivalCommission: 20 };
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const fmtDate = s => s ? new Date(s + "T00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "";
+const daysAway = s => Math.round((new Date(s + "T00:00") - new Date(new Date().toDateString())) / 864e5);
+
+/* ---------- sample data (clearly marked as samples in the UI) ---------- */
+function seed() {
+  const chefs = [
+    { id: "you", you: true, name: "Your Name", area: "Your city", cuisine: "Modern Mediterranean", color: "#d9921a", rating: 4.9, count: 37, tonight: true, years: 9,
+      bio: "Ex-restaurant chef cooking intimate dinners, pop-ups and market food. Seasonal produce, big flavours, zero stress for the host.",
+      badges: ["Food hygiene L2", "Insured", "Allergen trained", "ID verified"],
+      menus: [
+        { id: "m1", name: "Signature 3-course", price: 85, min: 4, courses: ["Burrata, heritage tomato, basil oil", "Slow-braised lamb shoulder, smoked aubergine", "Olive oil cake, poached figs"] },
+        { id: "m2", name: "Sharing feast", price: 65, min: 6, courses: ["Mezze table & flatbreads", "Charred chicken, herb rice, pickles", "Baklava & mint tea"] },
+        { id: "m3", name: "Tasting menu (6 courses)", price: 140, min: 2, courses: ["Snacks", "Crudo", "Pasta", "Fish", "Meat", "Dessert"] } ],
+      reviews: [ { who: "Sample review · Maya", stars: 5, text: "Felt like a restaurant in our living room, and the kitchen was cleaner than before." },
+                 { who: "Sample review · Tom", stars: 5, text: "Handled two allergies without fuss. Booking took 3 minutes." } ] },
+    { id: "c2", name: "Amara Okafor", area: "Downtown", cuisine: "West African fusion", color: "#2c7a4b", rating: 4.8, count: 52, tonight: false, years: 7,
+      bio: "Jollof, suya and smoke. Family-style feasts for celebrations.", badges: ["Food hygiene L2", "Insured", "ID verified"],
+      menus: [ { id: "a1", name: "Celebration feast", price: 70, min: 8, courses: ["Suya skewers", "Party jollof, plantain, slaw", "Puff-puff, salted caramel"] } ], reviews: [] },
+    { id: "c3", name: "Kenji Mori", area: "Riverside", cuisine: "Japanese omakase", color: "#3b5bb5", rating: 5.0, count: 21, tonight: true, years: 12,
+      bio: "Counter-style omakase at your table, 8–12 guests max.", badges: ["Food hygiene L3", "Insured", "Allergen trained", "ID verified"],
+      menus: [ { id: "k1", name: "Omakase 10 pieces + 3 plates", price: 160, min: 4, courses: ["Chawanmushi", "10-piece nigiri", "Wagyu tataki", "Yuzu sorbet"] } ], reviews: [] },
+    { id: "c4", name: "Lucía Reyes", area: "Old Town", cuisine: "Spanish tapas & paella", color: "#b3372f", rating: 4.7, count: 64, tonight: true, years: 6,
+      bio: "Giant paella cooked live in your garden. Great for 10–40.", badges: ["Food hygiene L2", "Insured"],
+      menus: [ { id: "l1", name: "Paella party", price: 48, min: 10, courses: ["Tapas: croquetas, pan con tomate, jamón", "Seafood or veggie paella (live)", "Crema catalana"] } ], reviews: [] },
+  ];
+  const popups = [
+    { id: "p1", chefId: "you", title: "Weekend market booth", place: "Central farmers' market", date: day(5), time: "10:00–15:00", cap: 150,
+      items: [ { name: "Lamb flatbread", price: 13 }, { name: "Halloumi & hot honey wrap", price: 11 }, { name: "Olive oil cake", price: 5 } ], sold: { 0: 38, 1: 21, 2: 30 } },
+    { id: "p2", chefId: "c3", title: "Ramen night pop-up", place: "The Yard, Riverside", date: day(9), time: "18:00–22:00", cap: 60,
+      items: [ { name: "Tonkotsu ramen", price: 17 }, { name: "Karaage", price: 8 } ], sold: { 0: 41, 1: 25 } },
+  ];
+  const bookings = [
+    { id: uid(), chefId: "you", menuId: "m1", date: day(3), time: "19:30", guests: 8, client: "Sample · Priya S.", phone: "", allergies: "1 guest: tree nuts (severe)", diet: "2 vegetarian",
+      kitchen: { oven: true, hob: "Induction", plates: true, parking: false }, notes: "Surprise birthday — arrive by 17:00 via side gate.", status: "new", created: Date.now() - 36e5 },
+    { id: uid(), chefId: "you", menuId: "m2", date: day(12), time: "13:00", guests: 14, client: "Sample · Dan & Co", phone: "", allergies: "", diet: "1 gluten-free",
+      kitchen: { oven: true, hob: "Gas", plates: false, parking: true }, notes: "Team lunch in the office kitchen.", status: "accepted", created: Date.now() - 864e5 * 2 },
+    { id: uid(), chefId: "you", menuId: "m3", date: day(-6), time: "20:00", guests: 4, client: "Sample · Olivia R.", phone: "", allergies: "", diet: "",
+      kitchen: { oven: true, hob: "Gas", plates: true, parking: true }, notes: "", status: "accepted", created: Date.now() - 864e5 * 12 },
+  ];
+  return { brand: { ...BRAND }, chefs, popups, bookings, preorders: [] };
+}
+const KEY = "chef-on-call-v1";
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch (_) { S = seed(); }
+S.brand = { ...BRAND, ...(S.brand || {}) };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
+
+/* ---------- money ---------- */
+const money = v => S.brand.currency + Math.round(v).toLocaleString();
+const chefById = id => S.chefs.find(c => c.id === id);
+const menuOf = b => (chefById(b.chefId)?.menus || []).find(m => m.id === b.menuId);
+function quote(menu, guests) {
+  const sub = menu.price * guests;
+  const fee = sub * S.brand.feePct / 100;
+  const total = sub + fee;
+  const deposit = total * S.brand.depositPct / 100;
+  return { sub, fee, total, deposit, chefGets: sub, rivalGets: sub * (1 - S.brand.rivalCommission / 100) };
+}
+
+/* ---------- icons ---------- */
+const I = {
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  tent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20 12 4l9 16H3Z"/><path d="M12 20v-6"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6l2-8Z"/></svg>',
+  coin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5M12 6v2M12 16v2"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 0 2 2h13"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3Z"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  road: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21 9 3M19 21 15 3M12 5v2M12 11v2M12 17v2"/></svg>',
+};
+const TABS = {
+  client: [["find", "Find a chef", I.search], ["popups", "Pop-ups", I.tent], ["mine", "My bookings", I.cal]],
+  chef: [["requests", "Requests", I.inbox], ["earnings", "Earnings", I.coin], ["menus", "Menus", I.book], ["profile", "Profile", I.user]],
+  plan: [["why", "The problem", I.bulb], ["model", "Business", I.chart], ["roadmap", "Roadmap", I.road]],
+};
+
+/* ---------- navigation ---------- */
+let V = { side: "client", tab: "find", stack: [] }; // stack holds detail screens
+const app = document.getElementById("app");
+function go(screen) { V.stack.push(screen); render(); }
+function back() { V.stack.pop(); render(); }
+function toast(t) { const d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
+function armed(btn, label, fn) { btn.onclick = () => { if (btn.dataset.a) return fn(); const o = btn.textContent; btn.dataset.a = 1; btn.textContent = label; setTimeout(() => { delete btn.dataset.a; btn.textContent = o; }, 3000); }; }
+
+function render() {
+  const b = S.brand;
+  document.getElementById("brand").textContent = b.name;
+  document.getElementById("mark").textContent = (b.name || "C")[0].toUpperCase();
+  document.title = b.name;
+  document.querySelectorAll("[data-side]").forEach(x => x.classList.toggle("on", x.dataset.side === V.side));
+  const newCount = S.bookings.filter(x => x.chefId === "you" && x.status === "new").length;
+  document.getElementById("tabs").innerHTML = TABS[V.side].map(([k, l, ic]) =>
+    `<button data-tab="${k}" class="${k === V.tab ? "on" : ""}">${ic}<span>${l}${k === "requests" && newCount ? `<span class="badge-dot">${newCount}</span>` : ""}</span></button>`).join("");
+  document.querySelectorAll("[data-tab]").forEach(x => x.onclick = () => { V.tab = x.dataset.tab; V.stack = []; render(); });
+  const top = V.stack[V.stack.length - 1];
+  if (top) SCREENS[top.s](top);
+  else SCREENS[V.tab]();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll("[data-side]").forEach(x => x.onclick = () => { V.side = x.dataset.side; V.tab = TABS[V.side][0][0]; V.stack = []; render(); });
+
+/* ================= CLIENT SIDE ================= */
+let filter = { occasion: "Any", tonight: false };
+const OCCASIONS = ["Any", "Dinner party", "Birthday", "Date night", "Big group 10+", "Office lunch"];
+function chefCard(c) {
+  const from = Math.min(...c.menus.map(m => m.price));
+  return `<button class="chef" data-chef="${c.id}">
+    <div class="avatar" style="background:${c.color}">${esc(c.name.split(" ").map(w => w[0]).join("").slice(0, 2))}</div>
+    <div class="grow stack" style="gap:4px">
+      <div class="row"><b class="grow">${esc(c.name)}${c.you ? ' <span class="sample">you</span>' : ' <span class="sample">sample</span>'}</b><span class="sm"><span class="star">★</span> ${c.rating} <span class="muted">(${c.count})</span></span></div>
+      <div class="sm muted">${esc(c.cuisine)} · ${esc(c.area)}</div>
+      <div class="chips">${c.tonight ? '<span class="chip accent">Free tonight</span>' : ""}${c.badges.includes("Insured") ? '<span class="chip good">✓ Insured</span>' : ""}${c.badges.includes("Allergen trained") ? '<span class="chip good">✓ Allergen trained</span>' : ""}</div>
+      <div class="sm">From <span class="price">${money(from)}</span> <span class="muted">/ guest · groceries included</span></div>
+    </div></button>`;
+}
+const SCREENS = {};
+SCREENS.find = () => {
+  let list = S.chefs.filter(c => !filter.tonight || c.tonight);
+  if (filter.occasion === "Big group 10+") list = list.filter(c => c.menus.some(m => m.min >= 6));
+  app.innerHTML = `
+  <section class="hero">
+    <span class="eyebrow" style="color:var(--head-muted)">Private chefs near you</span>
+    <h1>A restaurant night, at your table.</h1>
+    <p>Fixed prices with groceries included. Book in 3 minutes. Allergies handled before the chef arrives.</p>
+    <div class="scroll-x">${OCCASIONS.map(o => `<button class="chip ${filter.occasion === o ? "on" : ""}" data-occ="${esc(o)}">${esc(o)}</button>`).join("")}</div>
+    <label class="tick" style="color:var(--head-ink);border:0;padding:0"><input type="checkbox" id="tonight" ${filter.tonight ? "checked" : ""}> Free tonight only</label>
+  </section>
+  <div class="row"><h2 class="grow" style="font-size:20px">${list.length} chefs available</h2><span class="xs muted">Sample listings</span></div>
+  <div class="stack">${list.map(chefCard).join("") || '<div class="empty">No chefs match. Try another filter.</div>'}</div>
+  <div class="card stack"><span class="eyebrow">How it works</span>
+    <div class="sm"><b>1. Pick a menu.</b> The price you see is the price you pay, groceries included.</div>
+    <div class="sm"><b>2. Tell us about your kitchen and allergies.</b> The chef arrives prepared, with no back-and-forth.</div>
+    <div class="sm"><b>3. Pay a ${S.brand.depositPct}% deposit.</b> The rest is due after a great night. Clear cancellation rules.</div>
+  </div>`;
+  app.querySelectorAll("[data-occ]").forEach(b => b.onclick = () => { filter.occasion = b.dataset.occ; render(); });
+  app.querySelector("#tonight").onchange = e => { filter.tonight = e.target.checked; render(); };
+  app.querySelectorAll("[data-chef]").forEach(b => b.onclick = () => go({ s: "chef", id: b.dataset.chef }));
+};
+
+SCREENS.chef = ({ id }) => {
+  const c = chefById(id);
+  const pops = S.popups.filter(p => p.chefId === id);
+  app.innerHTML = `<button class="back" id="bk">‹ Back</button>
+  <div class="card stack">
+    <div class="row"><div class="avatar lg" style="background:${c.color}">${esc(c.name.split(" ").map(w => w[0]).join("").slice(0, 2))}</div>
+      <div class="grow"><h2 style="font-size:24px">${esc(c.name)}</h2><div class="sm muted">${esc(c.cuisine)} · ${esc(c.area)} · ${c.years} yrs</div>
+      <div class="sm"><span class="star">★</span> <b>${c.rating}</b> <span class="muted">· ${c.count} verified dinners</span></div></div></div>
+    <p style="margin:0">${esc(c.bio)}</p>
+    <div class="chips">${c.badges.map(b => `<span class="chip good">✓ ${esc(b)}</span>`).join("")}</div>
+  </div>
+  <h3 style="font-size:18px">Menus</h3>
+  <div class="stack">${c.menus.map(m => `<div class="menu-opt">
+    <div class="row"><b class="grow">${esc(m.name)}</b><span class="price">${money(m.price)}</span></div>
+    <ul class="courses">${m.courses.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    <div class="row"><span class="xs muted grow">Per guest, all-in · min ${m.min} guests</span><button class="btn sm" data-book="${m.id}">Book</button></div></div>`).join("")}</div>
+  ${pops.length ? `<h3 style="font-size:18px">Upcoming pop-ups</h3>${pops.map(popCard).join("")}` : ""}
+  ${c.reviews.length ? `<h3 style="font-size:18px">Reviews</h3><div class="card stack">${c.reviews.map(r => `<div><div class="star">${"★".repeat(r.stars)}</div><div>${esc(r.text)}</div><div class="xs muted">${esc(r.who)}</div></div>`).join("")}</div>` : ""}
+  <div class="note">Only guests who booked and paid can leave a review.</div>`;
+  app.querySelector("#bk").onclick = back;
+  app.querySelectorAll("[data-book]").forEach(b => b.onclick = () => go({ s: "book", id, menuId: b.dataset.book, step: 1, d: null }));
+  app.querySelectorAll("[data-pop]").forEach(b => b.onclick = () => go({ s: "pop", id: b.dataset.pop }));
+};
+
+SCREENS.book = (st) => {
+  const c = chefById(st.id), m = c.menus.find(x => x.id === st.menuId);
+  st.d = st.d || { guests: Math.max(m.min, 6), date: day(7), time: "19:30", allergies: "", diet: "", kitchen: { oven: true, hob: "Gas", plates: true, parking: false }, notes: "", client: "", phone: "" };
+  const d = st.d, q = quote(m, d.guests), dAway = daysAway(d.date);
+  const steps = ["When & who", "Kitchen & allergies", "Confirm"];
+  let body = "";
+  if (st.step === 1) body = `
+    <div class="card stack">
+      <div><label>Guests</label><div class="stepper"><button id="minus" aria-label="Fewer guests">−</button><b class="num">${d.guests}</b><button id="plus" aria-label="More guests">+</button><span class="xs muted">min ${m.min}</span></div></div>
+      <div class="grid2"><div><label for="date">Date</label><input type="date" id="date" value="${d.date}" min="${day(1)}"></div><div><label for="time">Dinner time</label><input type="time" id="time" value="${d.time}"></div></div>
+    </div>
+    <div class="card"><table class="num">
+      <tr><td>${d.guests} guests × ${money(m.price)}<div class="xs muted">Menu, groceries, cooking, serving, clean-up</div></td><td>${money(q.sub)}</td></tr>
+      <tr><td>Service fee (${S.brand.feePct}%)</td><td>${money(q.fee)}</td></tr>
+      <tr class="tot"><td>Total</td><td>${money(q.total)}</td></tr></table></div>`;
+  if (st.step === 2) body = `
+    <div class="card stack"><h3>Allergies & diets</h3>
+      <div><label for="al">Allergies (the chef sees these in red)</label><input id="al" value="${esc(d.allergies)}" placeholder="e.g. 1 guest: peanuts (severe)"></div>
+      <div><label for="di">Diets</label><input id="di" value="${esc(d.diet)}" placeholder="e.g. 2 vegetarian, 1 halal"></div></div>
+    <div class="card"><h3 style="margin-bottom:6px">Your kitchen</h3>
+      <label class="tick"><input type="checkbox" data-kc="oven" ${d.kitchen.oven ? "checked" : ""}> Working oven</label>
+      <label class="tick"><input type="checkbox" data-kc="plates" ${d.kitchen.plates ? "checked" : ""}> Enough plates & cutlery for everyone</label>
+      <label class="tick"><input type="checkbox" data-kc="parking" ${d.kitchen.parking ? "checked" : ""}> Parking near the door</label>
+      <div style="margin-top:10px"><label for="hob">Hob type</label><select id="hob">${["Gas", "Induction", "Electric", "None"].map(h => `<option ${h === d.kitchen.hob ? "selected" : ""}>${h}</option>`).join("")}</select></div>
+      <div class="xs muted" style="margin-top:8px">No plates or oven? The chef brings what's missing (may add a small rental fee).</div></div>
+    <div class="card stack"><div><label for="nt">Anything else? (occasion, access, timing)</label><textarea id="nt">${esc(d.notes)}</textarea></div></div>`;
+  if (st.step === 3) body = `
+    <div class="card stack">
+      <div class="row"><div class="avatar" style="background:${c.color}">${esc(c.name[0])}</div><div class="grow"><b>${esc(m.name)}</b><div class="sm muted">${esc(c.name)} · ${fmtDate(d.date)} · ${esc(d.time)} · ${d.guests} guests</div></div></div>
+      ${d.allergies ? `<div class="allergy">⚠ ${esc(d.allergies)}</div>` : ""}
+      <div class="grid2"><div><label for="nm">Your name</label><input id="nm" value="${esc(d.client)}" autocomplete="name"></div><div><label for="ph">Phone</label><input id="ph" type="tel" value="${esc(d.phone)}" autocomplete="tel"></div></div>
+    </div>
+    <div class="card"><table class="num">
+      <tr><td>Total</td><td>${money(q.total)}</td></tr>
+      <tr class="tot"><td>Deposit today (${S.brand.depositPct}%)</td><td>${money(q.deposit)}</td></tr>
+      <tr><td class="muted">Balance after the dinner</td><td class="muted">${money(q.total - q.deposit)}</td></tr></table></div>
+    <div class="note"><b>Cancellation:</b> free up to 14 days before. 7–14 days: deposit kept. Under 7 days: 50% charged, because groceries are already bought. If the chef cancels, you get a full refund plus priority rebooking.${dAway < 7 ? `<br><b>Your date is ${dAway} days away.</b>` : ""}</div>`;
+  app.innerHTML = `<button class="back" id="bk">‹ ${st.step === 1 ? "Back" : steps[st.step - 2]}</button>
+    <div><span class="eyebrow">Step ${st.step} of 3</span><h2 style="font-size:24px">${steps[st.step - 1]}</h2></div>
+    ${body}
+    <button class="btn block" id="next">${st.step < 3 ? "Continue" : "Pay deposit " + money(q.deposit) + " (demo)"}</button>`;
+  const $ = s => app.querySelector(s);
+  $("#bk").onclick = () => { if (st.step > 1) { st.step--; render(); } else back(); };
+  if (st.step === 1) {
+    $("#minus").onclick = () => { d.guests = Math.max(m.min, d.guests - 1); render(); };
+    $("#plus").onclick = () => { d.guests = Math.min(60, d.guests + 1); render(); };
+    $("#date").onchange = e => { d.date = e.target.value || d.date; };
+    $("#time").onchange = e => { d.time = e.target.value; };
+  }
+  if (st.step === 2) {
+    $("#al").oninput = e => d.allergies = e.target.value; $("#di").oninput = e => d.diet = e.target.value; $("#nt").oninput = e => d.notes = e.target.value;
+    $("#hob").onchange = e => d.kitchen.hob = e.target.value;
+    app.querySelectorAll("[data-kc]").forEach(x => x.onchange = () => d.kitchen[x.dataset.kc] = x.checked);
+  }
+  if (st.step === 3) { $("#nm").oninput = e => d.client = e.target.value; $("#ph").oninput = e => d.phone = e.target.value; }
+  $("#next").onclick = () => {
+    if (st.step < 3) { st.step++; return render(); }
+    if (!d.client.trim()) { $("#nm").focus(); $("#nm").style.borderColor = "var(--bad)"; return; }
+    const bk = { id: uid(), chefId: c.id, menuId: m.id, ...JSON.parse(JSON.stringify(d)), status: "new", created: Date.now() };
+    S.bookings.push(bk); save();
+    V.stack = [{ s: "booked", id: bk.id }]; render();
+  };
+};
+
+SCREENS.booked = ({ id }) => {
+  const b = S.bookings.find(x => x.id === id), c = chefById(b.chefId);
+  app.innerHTML = `<div class="card stack" style="text-align:center;padding:28px 18px">
+    <div class="done-ic">✓</div><h2>Request sent to ${esc(c.name.split(" ")[0])}</h2>
+    <p class="muted" style="margin:0">Chefs answer within 2 hours. If they decline, your deposit is returned automatically and we suggest similar chefs.</p></div>
+    <div class="note">Demo tip: switch to <b>Chef</b> at the top${c.you ? " to see this request arrive in your inbox." : ". This request went to a sample chef. Book a menu on your own profile to see it arrive in your chef inbox."}</div>
+    <button class="btn block dark" id="mine">See my bookings</button>`;
+  app.querySelector("#mine").onclick = () => { V.tab = "mine"; V.stack = []; render(); };
+};
+
+SCREENS.mine = () => {
+  const list = [...S.bookings].filter(b => !String(b.client).startsWith("Sample")).sort((a, b) => b.created - a.created);
+  const pre = S.preorders;
+  app.innerHTML = `<h2>My bookings</h2>
+    ${list.length ? list.map(b => { const c = chefById(b.chefId), m = menuOf(b), q = quote(m, b.guests); return `<div class="card stack">
+      <div class="row"><b class="grow">${esc(m.name)}</b><span class="status ${b.status}">${b.status === "new" ? "waiting" : b.status}</span></div>
+      <div class="sm muted">${esc(c.name)} · ${fmtDate(b.date)} ${esc(b.time)} · ${b.guests} guests</div>
+      <div class="sm num">Deposit paid ${money(q.deposit)} · balance ${money(q.total - q.deposit)}</div></div>`; }).join("")
+    : `<div class="empty">No bookings yet.<br>Find a chef and book a menu. It takes about 3 minutes.</div>`}
+    ${pre.length ? `<h3 style="font-size:18px">Pop-up pre-orders</h3>${pre.map(p => { const pp = S.popups.find(x => x.id === p.popupId); return `<div class="card sm"><b>${esc(pp.title)}</b> · ${fmtDate(pp.date)}<div class="muted">${Object.entries(p.items).filter(([, n]) => n).map(([i, n]) => `${n}× ${esc(pp.items[i].name)}`).join(", ")} · ${money(p.total)} · collect at ${esc(pp.place)}</div></div>`; }).join("")}` : ""}`;
+};
+
+function popCard(p) {
+  const c = chefById(p.chefId), sold = Object.values(p.sold).reduce((a, n) => a + n, 0);
+  return `<button class="chef" data-pop="${p.id}"><div class="avatar" style="background:${c.color}">${I.tent.replace("<svg", '<svg width="26" height="26"')}</div>
+    <div class="grow stack" style="gap:3px"><b>${esc(p.title)}</b><div class="sm muted">${esc(c.name)} · ${fmtDate(p.date)} · ${esc(p.time)}</div><div class="sm muted">${esc(p.place)}</div>
+    <div class="chips"><span class="chip accent">${sold} pre-ordered</span><span class="chip">Skip the queue</span></div></div></button>`;
+}
+SCREENS.popups = () => {
+  app.innerHTML = `<div><span class="eyebrow">Pop-ups, booths & supper clubs</span><h2>Pre-order, skip the queue</h2></div>
+    <p class="muted" style="margin:0">Order ahead and pick up at the stall. Chefs know how much to cook, and you don't wait in line.</p>
+    <div class="stack">${S.popups.map(popCard).join("")}</div>`;
+  app.querySelectorAll("[data-pop]").forEach(b => b.onclick = () => go({ s: "pop", id: b.dataset.pop, cart: {} }));
+};
+SCREENS.pop = (st) => {
+  const p = S.popups.find(x => x.id === st.id), c = chefById(p.chefId); st.cart = st.cart || {};
+  const total = p.items.reduce((a, it, i) => a + (st.cart[i] || 0) * it.price, 0);
+  app.innerHTML = `<button class="back" id="bk">‹ Back</button>
+    <div class="card stack"><h2>${esc(p.title)}</h2><div class="sm muted">${esc(c.name)} · ${fmtDate(p.date)} · ${esc(p.time)}<br>${esc(p.place)}</div></div>
+    <div class="card">${p.items.map((it, i) => `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><div class="grow"><b>${esc(it.name)}</b><div class="sm muted num">${money(it.price)}</div></div>
+      <div class="stepper"><button data-dec="${i}" aria-label="Remove one">−</button><b class="num" style="font-size:18px">${st.cart[i] || 0}</b><button data-inc="${i}" aria-label="Add one">+</button></div></div>`).join("")}</div>
+    <div class="grid2"><div><label for="pn">Name for pick-up</label><input id="pn" value="${esc(st.name || "")}"></div><div><label>Total</label><input disabled class="num" value="${money(total)}"></div></div>
+    <button class="btn block" id="go" ${total ? "" : "disabled style='opacity:.5'"}>Pre-order & pay ${money(total)} (demo)</button>`;
+  const $ = s => app.querySelector(s);
+  $("#bk").onclick = back;
+  $("#pn").oninput = e => st.name = e.target.value;
+  app.querySelectorAll("[data-inc]").forEach(b => b.onclick = () => { st.cart[b.dataset.inc] = (st.cart[b.dataset.inc] || 0) + 1; render(); });
+  app.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => { st.cart[b.dataset.dec] = Math.max(0, (st.cart[b.dataset.dec] || 0) - 1); render(); });
+  $("#go").onclick = () => {
+    if (!total) return;
+    Object.entries(st.cart).forEach(([i, n]) => p.sold[i] = (p.sold[i] || 0) + n);
+    S.preorders.push({ id: uid(), popupId: p.id, items: { ...st.cart }, name: st.name || "Guest", total }); save();
+    toast("Pre-order placed"); V.tab = "mine"; V.stack = []; render();
+  };
+};
+
+/* ================= CHEF SIDE ================= */
+const you = () => chefById("you");
+SCREENS.requests = () => {
+  const mine = S.bookings.filter(b => b.chefId === "you").sort((a, b) => a.date.localeCompare(b.date));
+  const groups = [["new", "New requests"], ["accepted", "Confirmed"], ["declined", "Declined"]];
+  app.innerHTML = `<div><span class="eyebrow">Chef inbox</span><h2>${you().name === "Your Name" ? "Hi Chef" : "Hi " + esc(you().name.split(" ")[0])} 👋</h2></div>
+    <div class="note">Every request arrives complete: menu, guests, allergies, kitchen check and deposit already paid. You don't write proposals or chase anyone.</div>
+    ${groups.map(([k, l]) => { const g = mine.filter(b => b.status === k); return g.length ? `<h3 style="font-size:17px">${l} · ${g.length}</h3>${g.map(reqCard).join("")}` : ""; }).join("")}
+    ${!mine.length ? '<div class="empty">No requests yet. Share your booking link from Profile.</div>' : ""}`;
+  app.querySelectorAll("[data-req]").forEach(b => b.onclick = () => go({ s: "req", id: b.dataset.req }));
+};
+function reqCard(b) {
+  const m = menuOf(b), q = quote(m, b.guests);
+  return `<button class="chef" data-req="${b.id}"><div class="grow stack" style="gap:4px">
+    <div class="row"><b class="grow">${esc(b.client)}</b><span class="status ${b.status}">${b.status}</span></div>
+    <div class="sm muted">${fmtDate(b.date)} · ${esc(b.time)} · ${b.guests} guests · ${esc(m.name)}</div>
+    ${b.allergies ? `<div class="allergy" style="font-size:13px;padding:5px 8px">⚠ ${esc(b.allergies)}</div>` : ""}
+    <div class="sm num">You get <b>${money(q.chefGets)}</b> · deposit secured</div></div></button>`;
+}
+SCREENS.req = ({ id }) => {
+  const b = S.bookings.find(x => x.id === id), m = menuOf(b), q = quote(m, b.guests), k = b.kitchen;
+  const shop = m.courses.map(c => `<li>${esc(c)} × ${b.guests}</li>`).join("");
+  app.innerHTML = `<button class="back" id="bk">‹ Requests</button>
+    <div class="card stack"><div class="row"><h2 class="grow" style="font-size:22px">${esc(b.client)}</h2><span class="status ${b.status}">${b.status}</span></div>
+      <div class="sm">${fmtDate(b.date)} · ${esc(b.time)} · <b>${b.guests} guests</b> · ${daysAway(b.date)} days away</div>
+      <div class="sm"><b>${esc(m.name)}</b></div>
+      ${b.allergies ? `<div class="allergy">⚠ ALLERGY: ${esc(b.allergies)}</div>` : '<div class="sm muted">No allergies declared.</div>'}
+      ${b.diet ? `<div class="sm">Diets: <b>${esc(b.diet)}</b></div>` : ""}
+      ${b.notes ? `<div class="note">${esc(b.notes)}</div>` : ""}</div>
+    <div class="card"><h3 style="margin-bottom:6px">Kitchen check</h3><div class="chips">
+      <span class="chip ${k.oven ? "good" : ""}">${k.oven ? "✓" : "✗"} Oven</span><span class="chip">Hob: ${esc(k.hob)}</span>
+      <span class="chip ${k.plates ? "good" : ""}">${k.plates ? "✓ Plates" : "✗ Bring plates"}</span><span class="chip ${k.parking ? "good" : ""}">${k.parking ? "✓ Parking" : "✗ No parking"}</span></div></div>
+    <div class="card"><table class="num">
+      <tr><td>Menu ${b.guests} × ${money(m.price)}</td><td>${money(q.sub)}</td></tr>
+      <tr class="tot"><td>Your payout (100%)</td><td>${money(q.chefGets)}</td></tr>
+      <tr><td class="muted">On a ${S.brand.rivalCommission}% commission app you'd get</td><td class="muted">${money(q.rivalGets)}</td></tr></table>
+      <div class="xs muted" style="margin-top:6px">Client paid ${money(q.deposit)} deposit. The balance is released to you 24h after the dinner.</div></div>
+    <details class="card"><summary><b>Prep list</b></summary><ul class="courses" style="margin-top:8px">${shop}</ul></details>
+    ${b.status === "new" ? `<div class="grid2"><button class="btn ghost" id="dec">Decline</button><button class="btn" id="acc">Accept</button></div>` : ""}`;
+  app.querySelector("#bk").onclick = back;
+  if (b.status === "new") {
+    app.querySelector("#acc").onclick = () => { b.status = "accepted"; save(); toast("Booked! Client notified"); back(); };
+    armed(app.querySelector("#dec"), "Tap again to decline", () => { b.status = "declined"; save(); toast("Declined. Client refunded"); back(); });
+  }
+};
+
+SCREENS.earnings = () => {
+  const acc = S.bookings.filter(b => b.chefId === "you" && b.status === "accepted");
+  const tot = acc.reduce((a, b) => { const q = quote(menuOf(b), b.guests); a.me += q.chefGets; a.rival += q.rivalGets; a.guests += b.guests; return a; }, { me: 0, rival: 0, guests: 0 });
+  const pops = S.popups.filter(p => p.chefId === "you");
+  const max = Math.max(tot.me, 1);
+  app.innerHTML = `<div><span class="eyebrow">Earnings</span><h2>Booked income</h2></div>
+    <div class="kpis num"><div class="kpi"><b>${money(tot.me)}</b><span>Your payout</span></div><div class="kpi"><b>${acc.length}</b><span>Confirmed dinners</span></div><div class="kpi"><b>${tot.guests}</b><span>Guests fed</span></div></div>
+    <div class="card stack"><h3>Keep more of every booking</h3>
+      <div class="bars num">
+        <div class="bar"><span>${esc(S.brand.name)}</span><i style="width:100%"></i><b>${money(tot.me)}</b></div>
+        <div class="bar"><span>${S.brand.rivalCommission}% app</span><i class="alt" style="width:${tot.rival / max * 100}%"></i><b>${money(tot.rival)}</b></div></div>
+      <div class="sm">That's <b>${money(tot.me - tot.rival)}</b> more for you. The client pays a ${S.brand.feePct}% service fee and your price stays whole.</div></div>
+    ${pops.map(p => { const sold = p.items.map((it, i) => p.sold[i] || 0), rev = p.items.reduce((a, it, i) => a + it.price * (p.sold[i] || 0), 0); return `<div class="card stack">
+      <div class="row"><h3 class="grow">${esc(p.title)}</h3><span class="xs muted">${fmtDate(p.date)}</span></div>
+      <div class="sm muted">Pre-orders tell you what to prep. Cook these quantities, plus a walk-up buffer.</div>
+      <table class="num">${p.items.map((it, i) => `<tr><td>${esc(it.name)}</td><td>${sold[i]} pre-ordered → prep <b>${Math.ceil(sold[i] * 1.6)}</b></td></tr>`).join("")}
+      <tr class="tot"><td>Pre-sold revenue</td><td>${money(rev)}</td></tr></table></div>`; }).join("")}`;
+};
+
+SCREENS.menus = () => {
+  const c = you();
+  app.innerHTML = `<div><span class="eyebrow">Your menus</span><h2>Fixed prices, groceries included</h2></div>
+    <div class="note">Set one all-in price per guest. Clients book instantly, and you never write a custom proposal for a tyre-kicker again.</div>
+    ${c.menus.map((m, i) => `<div class="card stack">
+      <div><label for="mn${i}">Menu name</label><input id="mn${i}" data-mi="${i}" data-f="name" value="${esc(m.name)}"></div>
+      <div class="grid2"><div><label for="mp${i}">Price / guest (all-in)</label><input id="mp${i}" type="number" inputmode="decimal" data-mi="${i}" data-f="price" value="${m.price}"></div>
+      <div><label for="mm${i}">Min guests</label><input id="mm${i}" type="number" inputmode="numeric" data-mi="${i}" data-f="min" value="${m.min}"></div></div>
+      <div><label for="mc${i}">Courses (one per line)</label><textarea id="mc${i}" data-mi="${i}" data-f="courses">${esc(m.courses.join("\n"))}</textarea></div>
+      <button class="btn ghost sm" data-del="${i}" style="justify-self:start">Remove menu</button></div>`).join("")}
+    <button class="btn block dark" id="add">+ Add a menu</button>`;
+  app.querySelectorAll("[data-mi]").forEach(el => el.oninput = () => {
+    const m = c.menus[+el.dataset.mi], f = el.dataset.f;
+    m[f] = f === "courses" ? el.value.split("\n").filter(Boolean) : (f === "name" ? el.value : Math.max(0, +el.value || 0)); save();
+  });
+  app.querySelectorAll("[data-del]").forEach(b => armed(b, "Tap again to remove", () => { c.menus.splice(+b.dataset.del, 1); save(); render(); }));
+  app.querySelector("#add").onclick = () => { c.menus.push({ id: uid(), name: "New menu", price: 75, min: 4, courses: ["Starter", "Main", "Dessert"] }); save(); render(); };
+};
+
+SCREENS.profile = () => {
+  const c = you(), b = S.brand;
+  app.innerHTML = `<div><span class="eyebrow">Your profile</span><h2>How clients see you</h2></div>
+    <div class="card stack">
+      <div class="grid2"><div><label for="pn">Name</label><input id="pn" data-p="name" value="${esc(c.name)}"></div><div><label for="pa">Area</label><input id="pa" data-p="area" value="${esc(c.area)}"></div></div>
+      <div><label for="pc">Cuisine / style</label><input id="pc" data-p="cuisine" value="${esc(c.cuisine)}"></div>
+      <div><label for="pb">Bio</label><textarea id="pb" data-p="bio">${esc(c.bio)}</textarea></div>
+      <label class="tick"><input type="checkbox" id="tn" ${c.tonight ? "checked" : ""}> I'm free tonight (shows a badge to clients)</label>
+      <button class="btn ghost" id="view">Preview my public page</button></div>
+    <div class="card stack"><h3>Your direct booking link</h3>
+      <div class="sm muted">Put it in your Instagram bio. Clients you bring yourself pay <b>0% commission</b>, because your clients stay yours.</div>
+      <input readonly id="link" value="${esc((b.name || "chef").toLowerCase().replace(/\W+/g, ""))}.com/${esc(c.name.toLowerCase().replace(/\W+/g, "-"))}">
+      <button class="btn sm dark" id="cp" style="justify-self:start">Copy link</button></div>
+    <div class="card stack"><h3>Platform brand</h3>
+      <div class="sm muted">Rename the whole platform whenever your brand is ready.</div>
+      <div class="grid2"><div><label for="bn">Brand name</label><input id="bn" value="${esc(b.name)}"></div><div><label for="bc">Currency</label><input id="bc" value="${esc(b.currency)}"></div></div>
+      <button class="btn ghost sm" id="reset" style="justify-self:start">Reset demo data</button></div>`;
+  app.querySelectorAll("[data-p]").forEach(el => el.oninput = () => { c[el.dataset.p] = el.value; save(); });
+  app.querySelector("#tn").onchange = e => { c.tonight = e.target.checked; save(); };
+  app.querySelector("#bn").oninput = e => { b.name = e.target.value || "Chef on Call"; save(); document.getElementById("brand").textContent = b.name; };
+  app.querySelector("#bc").oninput = e => { b.currency = e.target.value || "$"; save(); };
+  app.querySelector("#view").onclick = () => { V.side = "client"; V.tab = "find"; V.stack = [{ s: "chef", id: "you" }]; render(); };
+  app.querySelector("#cp").onclick = () => { const v = app.querySelector("#link").value; try { navigator.clipboard.writeText(v).then(() => toast("Copied"), () => app.querySelector("#link").select()); } catch (_) { app.querySelector("#link").select(); } };
+  armed(app.querySelector("#reset"), "Tap again to reset", () => { S = seed(); save(); toast("Demo reset"); render(); });
+};
+
+/* ================= PLAN SIDE ================= */
+SCREENS.why = () => {
+  app.innerHTML = `<div><span class="eyebrow">Research · what goes wrong today</span><h2>Booking a chef is still a mess</h2></div>
+    <div class="card"><h3 style="margin-bottom:4px">Chef pain</h3>
+      ${[["%", "Apps take 18–25% of every booking", "Marketplace chefs report commissions of 18–25%, and long-time chefs on platforms say the cut is too high."],
+         ["✎", "Unpaid proposal work", "On request-based apps several chefs write custom menus for the same client. Most of them get nothing, and some report fake or low-quality requests."],
+         ["🛒", "Grocery risk", "Grocery prices move, so quoting is hard. Chefs who buy food before a late cancellation lose money."],
+         ["✗", "Cancellations & non-payment", "Chefs share stories of last-minute cancellations, chargebacks and clients who never paid."],
+         ["☁", "Pop-ups & booths are a gamble", "Weather and footfall swing sales from one event to the next, so chefs over-prep or sell out early."]]
+        .map(([i, t, p]) => `<div class="pain"><div class="ic">${i}</div><div><b>${t}</b><p>${p}</p></div></div>`).join("")}</div>
+    <div class="card"><h3 style="margin-bottom:4px">Client pain</h3>
+      ${[["$", "“What will it actually cost?”", "Groceries are often billed on top, so the final price is a surprise. Clients compare day rates against per-head prices and get confused."],
+         ["⏱", "Slow back-and-forth", "Clients send a request, wait for proposals, then negotiate. That takes days to book a Saturday dinner."],
+         ["⚠", "Trust & allergies", "Hosts let a stranger into their home and kitchen and trust them with guests' allergies."],
+         ["🔥", "Kitchen surprises", "Clients don't know what the chef needs (oven, hob, plates), so problems show up on the night."]]
+        .map(([i, t, p]) => `<div class="pain"><div class="ic">${i}</div><div><b>${t}</b><p>${p}</p></div></div>`).join("")}</div>
+    <div class="card stack"><h3>Our answer</h3>
+      <div class="sm"><b>Instant, all-in price.</b> Chefs publish fixed menus with groceries included. Clients book like a hotel room, with no proposals.</div>
+      <div class="sm"><b>Deposit + clear cancellation rules</b> protect the chef's grocery money.</div>
+      <div class="sm"><b>Kitchen & allergy check at booking.</b> The chef arrives prepared, and allergies show in red.</div>
+      <div class="sm"><b>Chef keeps 100% of the menu price.</b> The client pays a ${S.brand.feePct}% fee, and clients a chef brings in pay 0%.</div>
+      <div class="sm"><b>Pre-orders for pop-ups & booths</b> turn a gamble into guaranteed sales and accurate prep.</div>
+      <div class="sm"><b>Trust badges:</b> hygiene cert, insurance, allergen training and ID, plus reviews only from paid bookings.</div></div>
+    <div class="xs muted">Sources: <a href="https://www.trustpilot.com/review/takeachef.com?page=3" target="_blank" rel="noopener">Take a Chef reviews</a> · <a href="https://www.takeachef.com/en-en/faqs" target="_blank" rel="noopener">Take a Chef FAQ</a> · <a href="https://www.trustpilot.com/review/yhangry.com?page=2" target="_blank" rel="noopener">Yhangry reviews</a> · <a href="https://yhangry.com/become-a-yhangry-chef/" target="_blank" rel="noopener">Yhangry chef page</a> · <a href="https://www.sharetribe.com/create/how-to-build-marketplace-for-personal-chefs/" target="_blank" rel="noopener">Sharetribe</a> · <a href="https://www.buzzsprout.com/2414748/episodes/16770456-deposits-payment-methods-and-payment-horror-stories-what-every-personal-chef-needs-to-know" target="_blank" rel="noopener">Personal chef podcast</a> · <a href="https://girlandthekitchen.com/faq/" target="_blank" rel="noopener">Chef FAQ</a> · <a href="https://companiesmadesimple.com/blogs/small-business-advice/start-street-food-business-uk" target="_blank" rel="noopener">Street food guide</a> · <a href="https://www.zenbusiness.com/start-a-business/food-service/pop-up-restaurant/" target="_blank" rel="noopener">Pop-up guide</a></div>`;
+};
+
+SCREENS.model = () => {
+  const avg = 8 * 85, fee = avg * S.brand.feePct / 100;
+  app.innerHTML = `<div><span class="eyebrow">Business model</span><h2>How the platform makes money</h2></div>
+    <div class="card"><h3 style="margin-bottom:6px">One typical dinner (8 guests × ${money(85)})</h3><table class="num">
+      <tr><td>Client pays</td><td>${money(avg + fee)}</td></tr>
+      <tr><td>Chef receives (100% of menu)</td><td>${money(avg)}</td></tr>
+      <tr class="tot"><td>Platform revenue (${S.brand.feePct}% client fee)</td><td>${money(fee)}</td></tr>
+      <tr><td class="muted">Same dinner on a ${S.brand.rivalCommission}% app: chef receives</td><td class="muted">${money(avg * (1 - S.brand.rivalCommission / 100))}</td></tr></table></div>
+    <div class="card stack"><h3>Revenue streams</h3>
+      <div class="sm"><b>1. Client service fee (${S.brand.feePct}%)</b> on every marketplace booking.</div>
+      <div class="sm"><b>2. Chef Pro plan (~${money(19)}/month):</b> own booking link at 0% commission, pop-up pre-orders, client CRM, costing tools. This is the tool chefs use even for clients they found themselves.</div>
+      <div class="sm"><b>3. Add-ons:</b> plate & equipment rental, waiter staffing, wine pairing partners (referral fee).</div>
+      <div class="sm"><b>4. Corporate & venue deals:</b> Airbnb hosts, villas, event planners and offices booking repeat chef nights.</div></div>
+    <div class="card stack"><h3>Simple year-one target (one city)</h3>
+      <table class="num"><tr><td>Active chefs</td><td>40</td></tr><tr><td>Bookings / chef / month</td><td>3</td></tr>
+      <tr><td>Marketplace fees / year</td><td>${money(40 * 3 * 12 * fee)}</td></tr><tr><td>Pro plans (25 × ${money(19)} × 12)</td><td>${money(25 * 19 * 12)}</td></tr>
+      <tr class="tot"><td>Year-one revenue</td><td>${money(40 * 3 * 12 * fee + 25 * 19 * 12)}</td></tr></table>
+      <div class="xs muted">These are illustrative assumptions to test, not forecasts.</div></div>
+    <div class="card stack"><h3>Why a chef starts it, not a tech company</h3>
+      <div class="sm">You know what a good chef looks like, you can recruit the first 20 from your own network, and you can test every feature on your own gigs first. Chef-led trust is the marketing angle: <i>"built by a chef, for chefs."</i></div></div>`;
+};
+
+SCREENS.roadmap = () => {
+  app.innerHTML = `<div><span class="eyebrow">Roadmap</span><h2>Start small, prove it, then scale</h2></div>
+    <div class="card">
+      ${[["Month 1", "Be chef #1", "Use your own booking page for your own gigs. Take deposits with a payment link (Stripe or similar). Collect allergy and kitchen info with the same form. Goal: 5 paid bookings, and learn what clients ask."],
+         ["Month 2–3", "Recruit 10–20 chefs", "Start with chefs you know: private chefs, pop-up and booth cooks. Offer them free Pro for 6 months. Manually match client requests in one city (concierge MVP, no code needed)."],
+         ["Month 3–4", "Find demand", "Instagram and TikTok content: “what a $85/head dinner looks like”. Partner with 5 Airbnb hosts or villas and 2 event planners. Run pop-up pre-orders at your own booth."],
+         ["Month 5–6", "Build the real app", "Once 30+ bookings are flowing manually, build accounts, payments, payouts and reviews. Use a marketplace builder (e.g. Sharetribe) before custom code."],
+         ["Month 6+", "Brand & expand", "Pick the final brand name, get insurance and terms reviewed by a lawyer, then open city #2 with the same playbook."]]
+        .map(([w, t, p]) => `<div class="phase"><b class="when">${w}</b><div><b>${t}</b><div class="sm muted">${p}</div></div></div>`).join("")}</div>
+    <div class="card stack"><h3>Numbers to watch</h3>
+      <div class="sm">• Request → booking rate (aim for over 40%; instant pricing should beat proposals)</div>
+      <div class="sm">• Repeat bookings within 6 months</div>
+      <div class="sm">• Chef payout per booking vs other apps</div>
+      <div class="sm">• Cancellations and allergy incidents (target zero)</div></div>
+    <div class="note">This is a clickable prototype for demos. It runs on this device, and payments are pretend. Show it to 10 chefs and 10 hosts this month and note what they say.</div>`;
+};
+
+render();
+</script>
+</body></html>
