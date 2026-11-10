@@ -17,11 +17,20 @@
     --warn: #b7791f;
     --bad: #b33a3a;
     --radius: 14px;
+    --head: #1f2a24;
+    --head-ink: #ffffff;
+    --head-muted: #b9c0bb;
+    --overlay: rgba(0,0,0,.45);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #141816; --card: #1d2320; --ink: #eef0ec; --muted: #9aa39d; --line: #2e3631;
+      --head: #0d100e; color-scheme: dark;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141816; --card: #1d2320; --ink: #eef0ec; --muted: #9aa39d; --line: #2e3631;
+    --head: #0d100e; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
@@ -30,11 +39,13 @@
     font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     padding-bottom: calc(76px + env(safe-area-inset-bottom));
   }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--head); }
   header.top {
-    position: sticky; top: 0; z-index: 5;
-    background: var(--ink); color: #fff;
-    padding: 14px 16px calc(14px) 16px;
-    padding-top: calc(14px + env(safe-area-inset-top));
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+    background: var(--head); color: var(--head-ink);
+    padding-block: 14px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
     display: flex; align-items: center; gap: 10px;
   }
   .logo {
@@ -42,8 +53,8 @@
     display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff; flex: none;
   }
   header.top h1 { font-size: 17px; margin: 0; line-height: 1.1; }
-  header.top small { color: #b9c0bb; font-size: 12px; }
-  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  header.top small { color: var(--head-muted); font-size: 12px; }
+  main { max-width: 760px; margin: 0 auto; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   nav.tabs {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
     background: var(--card); border-top: 1px solid var(--line);
@@ -126,7 +137,7 @@
   .back { background: none; border: 0; color: var(--brand); font: inherit; font-weight: 600; padding: 4px 0; margin-bottom: 6px; cursor: pointer; }
   .empty { text-align: center; padding: 30px 10px; color: var(--muted); }
   .fab {
-    position: fixed; right: 16px; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 4;
+    position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 4;
     width: 56px; height: 56px; border-radius: 50%; font-size: 28px; padding: 0;
     box-shadow: 0 6px 18px rgba(0,0,0,.2);
   }
@@ -135,11 +146,22 @@
   .swatches button { width: 36px; height: 36px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
   .swatches button.on { border-color: var(--ink); }
 
+  .sheet { position: fixed; inset: 0; z-index: 20; background: var(--overlay); overflow-y: auto; padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  .sheet .paper { background: #fff; color: #1a1a1a; max-width: 640px; margin: 0 auto; border-radius: var(--radius); padding: 22px; }
+  .sheet .bar { max-width: 640px; margin: 0 auto 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .qdoc .ph { border-bottom: 3px solid var(--brand); padding-bottom: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .qdoc h1 { margin: 0; font-size: 26px; color: var(--brand); }
+  .qdoc h2 { font-size: 17px; margin: 18px 0 6px; color: var(--brand); }
+  .qdoc .course { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #777; margin-top: 10px; }
+  .qdoc .dish { font-size: 16px; margin: 2px 0; }
+  .qdoc td { border-bottom: 1px solid #ddd; color: #1a1a1a; }
+  .qdoc .foot { margin-top: 20px; font-size: 12px; color: #555; }
   /* ---------- Printable client quote ---------- */
   #print { display: none; }
   @media print {
     body { background: #fff; color: #000; padding: 0; }
-    header.top, nav.tabs, main, .fab { display: none !important; }
+    header.top, nav.tabs, main, .fab, .sheet { display: none !important; }
+    body::before { display: none; }
     #print { display: block; padding: 10mm 14mm; font-size: 12pt; }
     #print .ph { border-bottom: 3px solid var(--brand); padding-bottom: 10px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end; }
     #print h1 { margin: 0; font-size: 26pt; color: var(--brand); }
@@ -209,6 +231,15 @@ const PACKING = {
   "Cooking Class": ["Ingredient kits per guest", "Aprons for guests", "Recipe handouts", "Knives & boards per station", "Burners", "Towels", "Tasting spoons"],
 };
 
+// In-page "tap again to confirm" (pop-up dialogs aren't available everywhere).
+function armed(btn, label, action) {
+  btn.onclick = () => {
+    if (btn.dataset.armed) return action();
+    const orig = btn.textContent; btn.dataset.armed = "1"; btn.textContent = label;
+    setTimeout(() => { delete btn.dataset.armed; btn.textContent = orig; }, 3000);
+  };
+}
+const FRAMED = (() => { try { return window.self !== window.top; } catch (_) { return true; } })();
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
@@ -444,7 +475,7 @@ function evDetails(e, box) {
     <button class="btn danger grow" id="del">Delete</button>
   </div>`;
   bindFields(box, e, k => { if (k === "type") { e.packing = (PACKING[e.type] || []).map(t => ({ t, d: false })); save(); render(); } if (k === "phone" || k === "email") {} });
-  box.querySelector("#del").onclick = () => { if (confirm("Delete this event?")) { S.events = S.events.filter(x => x !== e); save(); view.eventId = null; render(); } };
+  armed(box.querySelector("#del"), "Tap again to delete", () => { S.events = S.events.filter(x => x !== e); save(); view.eventId = null; render(); });
   box.querySelector("#dup").onclick = () => {
     const c = JSON.parse(JSON.stringify(e)); c.id = uid(); c.title = (e.title || e.type) + " (copy)"; c.status = "Inquiry"; c.date = ""; c.depositPaid = false; c.paidInFull = false;
     c.packing.forEach(p => p.d = false); c.tasks.forEach(t => t.d = false); c.bought = {};
@@ -515,7 +546,7 @@ function evCosting(e, box) {
     <label class="check" style="color:inherit;font-size:15px;font-weight:400;margin:0"><input type="checkbox" data-k="depositPaid" ${e.depositPaid ? "checked" : ""}><span>Deposit received ${plates ? "" : "(" + money(c.deposit) + ")"}</span></label>
     <label class="check" style="color:inherit;font-size:15px;font-weight:400;margin:0"><input type="checkbox" data-k="paidInFull" ${e.paidInFull ? "checked" : ""}><span>Paid in full</span></label>
   </div>
-  ${plates ? "" : `<button class="btn block" id="quote">📄 Create client quote (PDF)</button>
+  ${plates ? "" : `<button class="btn block" id="quote">📄 Show client quote</button>
   <button class="btn ghost block" style="margin-top:8px" id="msg">💬 Copy quote as message</button>`}`;
   bindFields(box, e, k => { if (!["depositPaid", "paidInFull"].includes(k)) debounceRender(); });
   if (!plates) {
@@ -586,10 +617,10 @@ function quoteMessage(e) {
     COURSES.map(co => c.dishes.filter(d => d.course === co).map(d => `• ${d.name}`).join("\n")).filter(Boolean).join("\n") +
     `\n\n${money(c.perHead)} per guest — ${money(c.revenue)} total.\nA ${num(e.depositPct)}% deposit (${money(c.deposit)}) secures the date.\n\n${b.terms}\n\nBest,\n${b.chef || b.name}${b.phone ? "\n" + b.phone : ""}`;
 }
-function printQuote(e) {
+function quoteHTML(e) {
   const c = calc(e), b = S.brand;
   const dt = e.date ? new Date(e.date + "T00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "Date TBC";
-  document.getElementById("print").innerHTML = `
+  return `
     <div class="ph"><div><h1>${esc(b.name)}</h1><div>${esc(b.tagline)}</div></div>
       <div style="text-align:right;font-size:10pt">${[b.chef, b.phone, b.email, b.instagram].filter(Boolean).map(esc).join("<br>")}</div></div>
     <div style="font-size:10pt;color:#555">PROPOSAL · ${new Date().toLocaleDateString()}</div>
@@ -605,12 +636,34 @@ function printQuote(e) {
       <tr><td><b>Balance due on the day</b></td><td class="num"><b>${money(c.revenue - c.deposit)}</b></td></tr>
     </table>
     <div class="foot">${esc(b.terms)}</div>`;
-  setTimeout(() => window.print(), 50);
+}
+function printQuote(e) {
+  const html = quoteHTML(e);
+  document.getElementById("print").innerHTML = `<div class="qdoc">${html}</div>`;
+  const sh = document.createElement("div"); sh.className = "sheet";
+  sh.innerHTML = `<div class="bar">
+      <button class="btn ghost small" id="qclose" style="background:var(--card)">‹ Back</button>
+      <button class="btn small" id="qmsg">💬 Copy as message</button>
+      ${FRAMED ? "" : `<button class="btn small" id="qprint">📄 Print / Save PDF</button>`}
+    </div>
+    <div class="paper qdoc">${html}</div>
+    ${FRAMED ? `<p class="bar small" style="color:#fff">Screenshot this to send it, or open the full app from GitHub to save as PDF.</p>` : ""}`;
+  document.body.appendChild(sh);
+  sh.querySelector("#qclose").onclick = () => sh.remove();
+  sh.querySelector("#qmsg").onclick = ev => copyText(quoteMessage(e), ev.currentTarget);
+  const pr = sh.querySelector("#qprint"); if (pr) pr.onclick = () => window.print();
+}
+function showCopyBox(t) {
+  const sh = document.createElement("div"); sh.className = "sheet";
+  sh.innerHTML = `<div class="card" style="max-width:640px;margin:0 auto"><h3>Copy this text</h3><textarea style="min-height:240px" readonly></textarea><button class="btn block" style="margin-top:10px">Done</button></div>`;
+  const ta = sh.querySelector("textarea"); ta.value = t;
+  sh.querySelector("button").onclick = () => sh.remove();
+  document.body.appendChild(sh); ta.focus(); ta.select();
 }
 function copyText(t, btn) {
   const done = () => { const o = btn.textContent; btn.textContent = "✓ Copied"; setTimeout(() => btn.textContent = o, 1500); };
-  if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, () => prompt("Copy this:", t));
-  else prompt("Copy this:", t);
+  const fallback = () => showCopyBox(t);
+  try { if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, fallback); else fallback(); } catch (_) { fallback(); }
 }
 
 /* ----- Dishes ----- */
@@ -663,10 +716,9 @@ function renderDish() {
   app.querySelector("#addi").onclick = () => { d.ingredients.push({ name: "", qty: "", unit: "", cost: "" }); save(); app.querySelector("#ings").innerHTML = ingRows(); wireIngs(); const all = app.querySelectorAll('[data-f="name"]'); all[all.length - 1].focus(); };
   const back = () => { view.dishId = null; render(); };
   app.querySelector("#bk").onclick = back; app.querySelector("#done").onclick = back;
-  app.querySelector("#del").onclick = () => {
-    if (!confirm("Delete this dish? It will be removed from any event menus.")) return;
+  armed(app.querySelector("#del"), "Tap again", () => {
     S.dishes = S.dishes.filter(x => x !== d); S.events.forEach(e => e.dishIds = e.dishIds.filter(id => id !== d.id)); save(); back();
-  };
+  });
 }
 
 /* ----- Money overview ----- */
@@ -716,13 +768,22 @@ function renderBrand() {
   <div class="card"><h3>Backup</h3>
     <p class="small muted" style="margin-top:0">Your data lives on this device only. Download a backup now and then, and use it to move to a new phone.</p>
     <div class="row wrap" style="gap:8px">
-      <button class="btn ghost" id="exp">⬇ Download backup</button>
-      <label class="btn ghost" style="margin:0;color:var(--ink);font-size:16px">⬆ Restore<input type="file" accept=".json" id="imp" hidden></label>
+      ${FRAMED ? "" : `<button class="btn ghost" id="exp">⬇ Download backup</button>`}
+      <button class="btn ghost" id="cpy">📋 Copy backup</button>
+      <label class="btn ghost" style="margin:0;color:var(--ink);font-size:16px">⬆ Restore file<input type="file" accept=".json" id="imp" hidden></label>
     </div>
+    <label for="paste" style="margin-top:12px">Or paste a backup here</label>
+    <textarea id="paste" placeholder='{"brand":…}'></textarea>
+    <button class="btn ghost small" id="restorePaste" style="margin-top:8px">Restore pasted backup</button>
+    <div class="small" id="bmsg" style="margin-top:8px"></div>
   </div>`;
   bindFields(app, b, k => { if (["name", "tagline", "color"].includes(k)) applyBrand(); });
   app.querySelectorAll("[data-c]").forEach(s => s.onclick = () => { b.color = s.dataset.c; save(); render(); });
-  app.querySelector("#exp").onclick = () => {
+  const msg = t => app.querySelector("#bmsg").textContent = t;
+  const restore = txt => { try { const d = JSON.parse(txt); if (!d.events || !d.dishes) throw 0; d.brand = { ...DEFAULT_BRAND, ...d.brand }; S = d; save(); render(); } catch (_) { msg("That isn't a valid backup."); } };
+  app.querySelector("#cpy").onclick = ev => copyText(JSON.stringify(S), ev.currentTarget);
+  armed(app.querySelector("#restorePaste"), "Tap again — replaces everything", () => restore(app.querySelector("#paste").value));
+  const ex = app.querySelector("#exp"); if (ex) ex.onclick = () => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: "application/json" }));
     a.download = (b.name || "kitchen").replace(/\W+/g, "-").toLowerCase() + "-backup-" + new Date().toISOString().slice(0, 10) + ".json";
@@ -730,7 +791,7 @@ function renderBrand() {
   };
   app.querySelector("#imp").onchange = ev => {
     const f = ev.target.files[0]; if (!f) return;
-    f.text().then(t => { try { const d = JSON.parse(t); if (!d.events || !d.dishes) throw 0; if (confirm("Replace everything with this backup?")) { d.brand = { ...DEFAULT_BRAND, ...d.brand }; S = d; save(); render(); } } catch (_) { alert("That file isn't a valid backup."); } });
+    f.text().then(restore);
   };
 }
 
