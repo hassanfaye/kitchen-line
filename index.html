@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2a24">
+<title>Kitchen Line</title>
+<style>
+  :root {
+    --brand: #c2562d;
+    --bg: #f6f3ee;
+    --card: #ffffff;
+    --ink: #1f2a24;
+    --muted: #6b726d;
+    --line: #e4ded4;
+    --good: #2f7d4f;
+    --warn: #b7791f;
+    --bad: #b33a3a;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141816; --card: #1d2320; --ink: #eef0ec; --muted: #9aa39d; --line: #2e3631;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  header.top {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--ink); color: #fff;
+    padding: 14px 16px calc(14px) 16px;
+    padding-top: calc(14px + env(safe-area-inset-top));
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo {
+    width: 34px; height: 34px; border-radius: 10px; background: var(--brand);
+    display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff; flex: none;
+  }
+  header.top h1 { font-size: 17px; margin: 0; line-height: 1.1; }
+  header.top small { color: #b9c0bb; font-size: 12px; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  nav.tabs {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
+    background: var(--card); border-top: 1px solid var(--line);
+    display: flex; padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav.tabs button {
+    flex: 1; background: none; border: 0; padding: 10px 4px 12px; color: var(--muted);
+    font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  nav.tabs button span { font-size: 20px; line-height: 1; }
+  nav.tabs button.on { color: var(--brand); }
+  h2 { font-size: 22px; margin: 4px 0 12px; }
+  h3 { font-size: 16px; margin: 0 0 10px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; margin-bottom: 12px;
+  }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row.wrap { flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .grid3 { grid-template-columns: 1fr 1fr; } }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea {
+    width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-height: 44px;
+  }
+  textarea { min-height: 70px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--brand); border-color: transparent; }
+  .btn {
+    font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 11px 14px; min-height: 44px;
+    background: var(--brand); color: #fff; cursor: pointer;
+  }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .btn.small { padding: 6px 10px; min-height: 34px; font-size: 14px; }
+  .btn.danger { background: transparent; color: var(--bad); border: 1px solid var(--line); }
+  .btn.block { width: 100%; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .pill {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+    padding: 3px 8px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line);
+  }
+  .pill.Inquiry { color: var(--warn); }
+  .pill.Quoted { color: #3a6db3; }
+  .pill.Booked { color: var(--good); }
+  .pill.Done { color: var(--muted); }
+  .event-item { cursor: pointer; }
+  .event-item .date {
+    width: 52px; text-align: center; flex: none; border-radius: 10px; background: var(--bg); padding: 6px 0;
+  }
+  .event-item .date b { display: block; font-size: 20px; line-height: 1; }
+  .event-item .date span { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+  .stat b { display: block; font-size: 18px; }
+  .stat span { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .seg { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+  .seg button {
+    flex: none; font: inherit; font-size: 14px; font-weight: 600; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); border-radius: 99px; padding: 7px 13px;
+  }
+  .seg button.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td, th { padding: 7px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.total td { font-weight: 800; border-bottom: 0; font-size: 16px; }
+  .check { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .check:last-child { border-bottom: 0; }
+  .check input { width: 22px; height: 22px; min-height: 0; flex: none; margin-top: 1px; accent-color: var(--brand); }
+  .check.done span { text-decoration: line-through; color: var(--muted); }
+  .dish-pick { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .dish-pick input { width: 22px; height: 22px; min-height: 0; flex: none; accent-color: var(--brand); }
+  .ing { display: grid; grid-template-columns: 1.6fr .8fr .8fr 1fr 34px; gap: 6px; margin-bottom: 6px; }
+  .ing input { padding: 8px; min-height: 40px; font-size: 14px; }
+  .xbtn { background: none; border: 0; color: var(--muted); font-size: 20px; cursor: pointer; }
+  .big { font-size: 26px; font-weight: 800; }
+  .back { background: none; border: 0; color: var(--brand); font: inherit; font-weight: 600; padding: 4px 0; margin-bottom: 6px; cursor: pointer; }
+  .empty { text-align: center; padding: 30px 10px; color: var(--muted); }
+  .fab {
+    position: fixed; right: 16px; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 4;
+    width: 56px; height: 56px; border-radius: 50%; font-size: 28px; padding: 0;
+    box-shadow: 0 6px 18px rgba(0,0,0,.2);
+  }
+  .note { font-size: 13px; color: var(--muted); background: var(--bg); border-radius: 10px; padding: 10px; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatches button { width: 36px; height: 36px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
+  .swatches button.on { border-color: var(--ink); }
+
+  /* ---------- Printable client quote ---------- */
+  #print { display: none; }
+  @media print {
+    body { background: #fff; color: #000; padding: 0; }
+    header.top, nav.tabs, main, .fab { display: none !important; }
+    #print { display: block; padding: 10mm 14mm; font-size: 12pt; }
+    #print .ph { border-bottom: 3px solid var(--brand); padding-bottom: 10px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: flex-end; }
+    #print h1 { margin: 0; font-size: 26pt; color: var(--brand); }
+    #print h2 { font-size: 14pt; margin: 18px 0 6px; color: var(--brand); }
+    #print .course { font-size: 9pt; letter-spacing: .12em; text-transform: uppercase; color: #777; margin-top: 10px; }
+    #print .dish { font-size: 13pt; margin: 2px 0; }
+    #print table td { border-bottom: 1px solid #ddd; }
+    #print .foot { margin-top: 24px; font-size: 9pt; color: #555; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo" id="logo">KL</div>
+  <div class="grow">
+    <h1 id="brandName">Kitchen Line</h1>
+    <small id="brandTag">Private chef · Pop-ups · Market booths</small>
+  </div>
+</header>
+
+<main id="app"></main>
+<div id="print"></div>
+
+<nav class="tabs">
+  <button data-tab="events" class="on"><span>📅</span>Events</button>
+  <button data-tab="menu"><span>🍽️</span>Dishes</button>
+  <button data-tab="money"><span>💰</span>Money</button>
+  <button data-tab="brand"><span>⚙️</span>Brand</button>
+</nav>
+
+<script>
+/* =========================================================
+   KITCHEN LINE — event tool for private chefs, pop-ups & booths
+   All your data is saved on this device (browser storage).
+   Use Brand > Backup to download a copy.
+   ========================================================= */
+
+// Default brand. Change it in the app (Brand tab) — no code needed.
+const DEFAULT_BRAND = {
+  name: "Kitchen Line",
+  tagline: "Private chef · Pop-ups · Market booths",
+  chef: "",
+  phone: "",
+  email: "",
+  instagram: "",
+  color: "#c2562d",
+  currency: "$",
+  terms: "A deposit is required to secure the date. Final guest count and dietary needs due 7 days before the event. Price includes shopping, cooking, service and kitchen clean-up."
+};
+
+const EVENT_TYPES = {
+  "Private Dinner": { icon: "🕯️", mode: "quote" },
+  "Pop-Up":         { icon: "⛺", mode: "plates" },
+  "Market Booth":   { icon: "🧺", mode: "plates" },
+  "Catering":       { icon: "🥂", mode: "quote" },
+  "Cooking Class":  { icon: "👩‍🍳", mode: "quote" },
+};
+const STATUSES = ["Inquiry", "Quoted", "Booked", "Done"];
+const COURSES = ["Canapé", "Starter", "Main", "Side", "Dessert", "Drink", "Booth item"];
+
+const PACKING = {
+  "Private Dinner": ["Knife roll", "Chef jacket + apron", "Cutting boards", "Mise en place containers", "Piping bags / squeeze bottles", "Plating tweezers & spoons", "Finishing salt & oils", "Torch / thermometer", "Towels & cloths", "Gloves", "Ice packs / cooler", "Printed menu cards", "Trash bags"],
+  "Pop-Up": ["Knife roll", "Chef jackets for team", "Hotel pans & lids", "Induction burners + extension cords", "Sheet pans", "Plates / bowls / cutlery", "Menu board / signage", "Card reader (charged)", "Cash float", "Tickets / order rail", "Hand wash station", "Food safety thermometer", "Sanitiser & cloths", "Trash & recycling bags"],
+  "Market Booth": ["Gazebo / tent + weights", "Folding tables (x2)", "Table cloth + banner", "Price board / menu sign", "Burner / griddle + gas", "Fire extinguisher", "Takeaway boxes, napkins, forks", "Card reader (charged)", "Cash float & cash box", "Coolers + ice", "Hand wash station", "Trader permit & food hygiene certificate", "Hi-vis / gloves / hairnets", "Trash bags", "Phone charger / power bank"],
+  "Catering": ["Chafing dishes + fuel", "Hotel pans", "Serving utensils", "Platters & risers", "Labels with allergens", "Hot boxes / cambros", "Coolers + ice", "Linen", "Gloves", "Thermometer", "Trash bags"],
+  "Cooking Class": ["Ingredient kits per guest", "Aprons for guests", "Recipe handouts", "Knives & boards per station", "Burners", "Towels", "Tasting spoons"],
+};
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+
+/* ---------------- Storage ---------------- */
+const KEY = "kitchen-line-v1";
+let S;
+function seed() {
+  const d1 = { id: uid(), name: "Seared scallop, cauliflower, brown butter", course: "Starter", allergens: "Shellfish, Dairy", notes: "",
+    ingredients: [ { name: "Scallops", qty: 3, unit: "pc", cost: 1.6 }, { name: "Cauliflower", qty: 0.15, unit: "kg", cost: 3 }, { name: "Butter", qty: 0.03, unit: "kg", cost: 9 } ] };
+  const d2 = { id: uid(), name: "Braised short rib, mash, red wine jus", course: "Main", allergens: "Dairy, Celery, Sulphites", notes: "Braise day before",
+    ingredients: [ { name: "Short rib", qty: 0.3, unit: "kg", cost: 18 }, { name: "Potatoes", qty: 0.25, unit: "kg", cost: 1.5 }, { name: "Red wine", qty: 0.1, unit: "L", cost: 10 }, { name: "Cream", qty: 0.05, unit: "L", cost: 4 } ] };
+  const d3 = { id: uid(), name: "Dark chocolate tart, crème fraîche", course: "Dessert", allergens: "Gluten, Dairy, Egg", notes: "",
+    ingredients: [ { name: "Dark chocolate", qty: 0.06, unit: "kg", cost: 16 }, { name: "Pastry", qty: 0.07, unit: "kg", cost: 6 }, { name: "Crème fraîche", qty: 0.03, unit: "kg", cost: 8 } ] };
+  const d4 = { id: uid(), name: "Smash burger + fries", course: "Booth item", allergens: "Gluten, Dairy, Mustard", notes: "Sell price 14",
+    ingredients: [ { name: "Beef mince", qty: 0.15, unit: "kg", cost: 12 }, { name: "Brioche bun", qty: 1, unit: "pc", cost: 0.6 }, { name: "Cheese slice", qty: 2, unit: "pc", cost: 0.2 }, { name: "Fries", qty: 0.2, unit: "kg", cost: 2.5 } ] };
+  const today = new Date(); today.setDate(today.getDate() + 10);
+  const ev = blankEvent("Private Dinner");
+  Object.assign(ev, { title: "Anniversary dinner — Sample", client: "Sample client", guests: 8, date: today.toISOString().slice(0, 10), time: "19:00",
+    status: "Quoted", dishIds: [d1.id, d2.id, d3.id], location: "Client's home", dietary: "1 guest no shellfish" });
+  return { brand: { ...DEFAULT_BRAND }, dishes: [d1, d2, d3, d4], events: [ev] };
+}
+function load() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); d.brand = { ...DEFAULT_BRAND, ...d.brand }; return d; } } catch (e) {}
+  return seed();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+function blankEvent(type = "Private Dinner") {
+  return {
+    id: uid(), title: "", type, status: "Inquiry", date: "", time: "", client: "", phone: "", email: "", location: "",
+    guests: (EVENT_TYPES[type] || {}).mode === "plates" ? 60 : 10, dietary: "", notes: "", dishIds: [],
+    // costs
+    chefHours: 8, chefRate: 35, staffCount: 0, staffHours: 6, staffRate: 22, travel: 0, rentals: 0, extras: 0, wastePct: 10,
+    // pricing
+    markupPct: 60, pricePerHead: "", platePrice: 14, depositPct: 50, depositPaid: false, paidInFull: false, stallFee: 0,
+    // checklists
+    packing: (PACKING[type] || []).map(t => ({ t, d: false })), tasks: [], bought: {}
+  };
+}
+
+/* ---------------- Maths ---------------- */
+const money = v => S.brand.currency + (Math.round(v * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const dishCost = d => (d.ingredients || []).reduce((a, i) => a + num(i.qty) * num(i.cost), 0);
+const dishById = id => S.dishes.find(d => d.id === id);
+
+function calc(e) {
+  const dishes = e.dishIds.map(dishById).filter(Boolean);
+  const perPortion = dishes.reduce((a, d) => a + dishCost(d), 0);
+  const guests = num(e.guests);
+  const food = perPortion * guests * (1 + num(e.wastePct) / 100);
+  const labour = num(e.chefHours) * num(e.chefRate) + num(e.staffCount) * num(e.staffHours) * num(e.staffRate);
+  const other = num(e.travel) + num(e.rentals) + num(e.extras) + num(e.stallFee);
+  const cost = food + labour + other;
+  const mode = (EVENT_TYPES[e.type] || {}).mode || "quote";
+  let revenue, perHead;
+  if (mode === "plates") {
+    perHead = num(e.platePrice);
+    revenue = perHead * guests;
+  } else {
+    perHead = e.pricePerHead !== "" && e.pricePerHead != null ? num(e.pricePerHead) : (guests ? cost * (1 + num(e.markupPct) / 100) / guests : 0);
+    perHead = Math.ceil(perHead);
+    revenue = perHead * guests;
+  }
+  const profit = revenue - cost;
+  const margin = revenue ? profit / revenue * 100 : 0;
+  const foodPct = revenue ? food / revenue * 100 : 0;
+  const deposit = revenue * num(e.depositPct) / 100;
+  // break-even plates for booth/pop-up
+  const unitFood = perPortion * (1 + num(e.wastePct) / 100);
+  const fixed = labour + other;
+  const breakEven = perHead > unitFood ? Math.ceil(fixed / (perHead - unitFood)) : null;
+  return { dishes, perPortion, food, labour, other, cost, revenue, perHead, profit, margin, foodPct, deposit, breakEven, mode };
+}
+
+function shopping(e) {
+  const map = {};
+  const mult = num(e.guests) * (1 + num(e.wastePct) / 100);
+  e.dishIds.map(dishById).filter(Boolean).forEach(d => (d.ingredients || []).forEach(i => {
+    if (!i.name) return;
+    const k = i.name.trim().toLowerCase() + "|" + (i.unit || "").trim().toLowerCase();
+    map[k] = map[k] || { name: i.name.trim(), unit: i.unit, qty: 0, cost: 0, key: k };
+    map[k].qty += num(i.qty) * mult;
+    map[k].cost += num(i.qty) * num(i.cost) * mult;
+  }));
+  return Object.values(map).sort((a, b) => a.name.localeCompare(b.name));
+}
+const fmtQty = q => q >= 10 ? Math.ceil(q * 10) / 10 : Math.ceil(q * 100) / 100;
+
+/* ---------------- Router / UI ---------------- */
+let view = { tab: "events", eventId: null, sub: "details", dishId: null, filter: "Upcoming" };
+const app = document.getElementById("app");
+
+function applyBrand() {
+  const b = S.brand;
+  document.documentElement.style.setProperty("--brand", b.color || DEFAULT_BRAND.color);
+  document.getElementById("brandName").textContent = b.name || "My Kitchen";
+  document.getElementById("brandTag").textContent = b.tagline || "";
+  document.getElementById("logo").textContent = (b.name || "K").split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  document.title = b.name || "Kitchen Line";
+}
+
+function render() {
+  applyBrand();
+  document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === view.tab));
+  document.querySelectorAll(".fab").forEach(f => f.remove());
+  if (view.tab === "events") view.eventId ? renderEvent() : renderEvents();
+  else if (view.tab === "menu") view.dishId ? renderDish() : renderDishes();
+  else if (view.tab === "money") renderMoney();
+  else renderBrand();
+  window.scrollTo(0, 0);
+}
+function fab(onclick) {
+  const b = document.createElement("button"); b.className = "btn fab"; b.textContent = "+"; b.setAttribute("aria-label", "Add");
+  b.onclick = onclick; document.body.appendChild(b);
+}
+
+/* ----- Events list ----- */
+function renderEvents() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const filters = ["Upcoming", ...STATUSES, "All"];
+  let list = [...S.events].sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
+  if (view.filter === "Upcoming") list = list.filter(e => e.status !== "Done" && (!e.date || e.date >= todayStr));
+  else if (view.filter !== "All") list = list.filter(e => e.status === view.filter);
+
+  const booked = S.events.filter(e => e.status === "Booked" || e.status === "Done");
+  const pipeline = S.events.filter(e => e.status === "Inquiry" || e.status === "Quoted").reduce((a, e) => a + calc(e).revenue, 0);
+  const next = [...S.events].filter(e => e.date >= todayStr && e.status !== "Done").sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  app.innerHTML = `
+    <div class="stats">
+      <div class="stat"><b>${S.events.filter(e => e.status === "Booked").length}</b><span>Booked gigs</span></div>
+      <div class="stat"><b>${money(pipeline)}</b><span>In pipeline</span></div>
+      <div class="stat"><b>${next ? daysUntil(next.date) : "—"}</b><span>${next ? "Next gig" : "No gigs yet"}</span></div>
+    </div>
+    <div class="seg">${filters.map(f => `<button class="${f === view.filter ? "on" : ""}" data-f="${f}">${f}</button>`).join("")}</div>
+    ${list.length ? list.map(eventCard).join("") : `<div class="empty">No events here.<br>Tap <b>+</b> to add an inquiry.</div>`}
+  `;
+  app.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { view.filter = b.dataset.f; render(); });
+  app.querySelectorAll("[data-ev]").forEach(c => c.onclick = () => { view.eventId = c.dataset.ev; view.sub = "details"; render(); });
+  fab(newEventPicker);
+}
+function daysUntil(d) {
+  const diff = Math.round((new Date(d + "T00:00") - new Date(new Date().toDateString())) / 864e5);
+  return diff === 0 ? "Today" : diff === 1 ? "Tomorrow" : diff + " days";
+}
+function eventCard(e) {
+  const c = calc(e);
+  const dt = e.date ? new Date(e.date + "T00:00") : null;
+  return `<div class="card event-item row" data-ev="${e.id}">
+    <div class="date">${dt ? `<b>${dt.getDate()}</b><span>${dt.toLocaleString(undefined, { month: "short" })}</span>` : `<b>?</b><span>date</span>`}</div>
+    <div class="grow">
+      <div style="font-weight:700">${EVENT_TYPES[e.type]?.icon || ""} ${esc(e.title || e.client || e.type)}</div>
+      <div class="small muted">${esc(e.type)} · ${num(e.guests)} ${c.mode === "plates" ? "plates" : "guests"}${e.location ? " · " + esc(e.location) : ""}</div>
+    </div>
+    <div style="text-align:right">
+      <span class="pill ${e.status}">${e.status}</span>
+      <div class="small" style="margin-top:4px;font-weight:700">${money(c.revenue)}</div>
+    </div>
+  </div>`;
+}
+function newEventPicker() {
+  app.innerHTML = `<button class="back" id="bk">‹ Events</button><h2>What kind of gig?</h2>
+    ${Object.entries(EVENT_TYPES).map(([t, v]) => `<button class="card row btn ghost block" style="justify-content:flex-start;text-align:left" data-t="${t}">
+      <span style="font-size:26px">${v.icon}</span><span class="grow"><b>${t}</b><br><span class="small muted">${v.mode === "plates" ? "Sell per plate · break-even calculator" : "Quote per head · client proposal"}</span></span></button>`).join("")}`;
+  document.querySelectorAll(".fab").forEach(f => f.remove());
+  app.querySelector("#bk").onclick = render;
+  app.querySelectorAll("[data-t]").forEach(b => b.onclick = () => {
+    const e = blankEvent(b.dataset.t); S.events.push(e); save(); view.eventId = e.id; view.sub = "details"; render();
+  });
+}
+
+/* ----- Single event ----- */
+function bindFields(root, obj, after) {
+  root.querySelectorAll("[data-k]").forEach(el => {
+    const ev = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(ev, () => {
+      obj[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value;
+      save(); after && after(el.dataset.k);
+    });
+  });
+}
+function field(obj, k, lbl, type = "text", extra = "") {
+  return `<div><label>${lbl}</label><input type="${type}" data-k="${k}" value="${esc(obj[k])}" ${type === "number" ? 'inputmode="decimal" step="any"' : ""} ${extra}></div>`;
+}
+
+function renderEvent() {
+  const e = S.events.find(x => x.id === view.eventId);
+  if (!e) { view.eventId = null; return render(); }
+  const subs = [["details", "Details"], ["menu", "Menu"], ["costing", "Price"], ["shop", "Shopping"], ["prep", "Prep & Pack"]];
+  app.innerHTML = `<button class="back" id="bk">‹ Events</button>
+    <h2>${EVENT_TYPES[e.type]?.icon || ""} ${esc(e.title || e.client || "New " + e.type)}</h2>
+    <div class="seg">${subs.map(([k, l]) => `<button class="${view.sub === k ? "on" : ""}" data-s="${k}">${l}</button>`).join("")}</div>
+    <div id="sub"></div>`;
+  app.querySelector("#bk").onclick = () => { view.eventId = null; render(); };
+  app.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { view.sub = b.dataset.s; render(); });
+  const box = app.querySelector("#sub");
+  ({ details: evDetails, menu: evMenu, costing: evCosting, shop: evShop, prep: evPrep })[view.sub](e, box);
+}
+
+function evDetails(e, box) {
+  box.innerHTML = `
+  <div class="card">
+    <div class="grid2">
+      <div><label>Status</label><select data-k="status">${STATUSES.map(s => `<option ${s === e.status ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+      <div><label>Type</label><select data-k="type">${Object.keys(EVENT_TYPES).map(s => `<option ${s === e.type ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+    </div>
+    <div style="margin-top:10px">${field(e, "title", "Event name", "text", 'placeholder="e.g. Sarah\'s 40th, Saturday market"')}</div>
+    <div class="grid2" style="margin-top:10px">
+      ${field(e, "date", "Date", "date")}
+      ${field(e, "time", "Start time", "time")}
+      ${field(e, "guests", (EVENT_TYPES[e.type]?.mode === "plates" ? "Expected plates sold" : "Guests"), "number")}
+      ${field(e, "location", "Location")}
+    </div>
+  </div>
+  <div class="card"><h3>Client</h3>
+    <div class="grid2">
+      ${field(e, "client", "Name / organiser")}
+      ${field(e, "phone", "Phone", "tel")}
+    </div>
+    <div style="margin-top:10px">${field(e, "email", "Email", "email")}</div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      ${e.phone ? `<a class="btn ghost small" href="tel:${esc(e.phone)}">📞 Call</a><a class="btn ghost small" href="https://wa.me/${esc(e.phone.replace(/\D/g, ""))}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ""}
+      ${e.email ? `<a class="btn ghost small" href="mailto:${esc(e.email)}">✉️ Email</a>` : ""}
+    </div>
+  </div>
+  <div class="card">
+    <label>Dietary needs & allergies</label><textarea data-k="dietary" placeholder="e.g. 2 vegetarian, 1 nut allergy">${esc(e.dietary)}</textarea>
+    <label style="margin-top:10px">Notes (kitchen access, parking, timings…)</label><textarea data-k="notes">${esc(e.notes)}</textarea>
+  </div>
+  <div class="row" style="gap:8px">
+    <button class="btn ghost grow" id="dup">Duplicate</button>
+    <button class="btn danger grow" id="del">Delete</button>
+  </div>`;
+  bindFields(box, e, k => { if (k === "type") { e.packing = (PACKING[e.type] || []).map(t => ({ t, d: false })); save(); render(); } if (k === "phone" || k === "email") {} });
+  box.querySelector("#del").onclick = () => { if (confirm("Delete this event?")) { S.events = S.events.filter(x => x !== e); save(); view.eventId = null; render(); } };
+  box.querySelector("#dup").onclick = () => {
+    const c = JSON.parse(JSON.stringify(e)); c.id = uid(); c.title = (e.title || e.type) + " (copy)"; c.status = "Inquiry"; c.date = ""; c.depositPaid = false; c.paidInFull = false;
+    c.packing.forEach(p => p.d = false); c.tasks.forEach(t => t.d = false); c.bought = {};
+    S.events.push(c); save(); view.eventId = c.id; render();
+  };
+}
+
+function evMenu(e, box) {
+  const c = calc(e);
+  const byCourse = COURSES.map(co => [co, S.dishes.filter(d => d.course === co)]).filter(([, l]) => l.length);
+  box.innerHTML = `
+  <div class="card"><div class="row"><div class="grow"><b>${c.dishes.length} dishes</b> on menu</div><div class="muted small">${money(c.perPortion)} food cost / ${c.mode === "plates" ? "plate" : "guest"}</div></div></div>
+  ${S.dishes.length ? byCourse.map(([co, list]) => `<div class="card"><h3>${co}</h3>${list.map(d => `
+    <label class="dish-pick" style="color:inherit;font-size:15px;font-weight:400;margin:0">
+      <input type="checkbox" data-d="${d.id}" ${e.dishIds.includes(d.id) ? "checked" : ""}>
+      <span class="grow">${esc(d.name)}${d.allergens ? `<br><span class="small muted">⚠ ${esc(d.allergens)}</span>` : ""}</span>
+      <span class="small muted">${money(dishCost(d))}</span>
+    </label>`).join("")}</div>`).join("")
+    : `<div class="empty">No dishes yet. Add them in the <b>Dishes</b> tab.</div>`}
+  <button class="btn ghost block" id="newdish">+ New dish</button>`;
+  box.querySelectorAll("[data-d]").forEach(cb => cb.onchange = () => {
+    const id = cb.dataset.d;
+    e.dishIds = cb.checked ? [...e.dishIds, id] : e.dishIds.filter(x => x !== id);
+    save(); render();
+  });
+  box.querySelector("#newdish").onclick = () => { const d = newDish(); view.tab = "menu"; view.dishId = d.id; render(); };
+}
+
+function evCosting(e, box) {
+  const c = calc(e);
+  const plates = c.mode === "plates";
+  const marginColor = c.margin >= 30 ? "var(--good)" : c.margin >= 15 ? "var(--warn)" : "var(--bad)";
+  box.innerHTML = `
+  <div class="card" style="text-align:center">
+    <div class="muted small">${plates ? "Expected takings" : "Quote total"}</div>
+    <div class="big">${money(c.revenue)}</div>
+    <div class="small">${money(c.perHead)} per ${plates ? "plate" : "guest"} · ${num(e.guests)} ${plates ? "plates" : "guests"}</div>
+    <div class="row" style="justify-content:center;gap:18px;margin-top:10px">
+      <div><b style="color:${marginColor}">${money(c.profit)}</b><div class="small muted">profit</div></div>
+      <div><b style="color:${marginColor}">${c.margin.toFixed(0)}%</b><div class="small muted">margin</div></div>
+      <div><b>${c.foodPct.toFixed(0)}%</b><div class="small muted">food cost</div></div>
+    </div>
+    ${plates ? `<div class="note" style="margin-top:10px">Break-even: <b>${c.breakEven ?? "—"} plates</b>. Every plate after that makes ${money(Math.max(0, c.perHead - c.perPortion * (1 + num(e.wastePct) / 100)))}.</div>` : ""}
+  </div>
+
+  <div class="card"><h3>Your price</h3>
+    ${plates ? `<div class="grid2">${field(e, "platePrice", "Price per plate", "number")}${field(e, "guests", "Plates you expect to sell", "number")}</div>`
+    : `<div class="grid2">${field(e, "markupPct", "Markup on cost %", "number")}${field(e, "pricePerHead", "Or fixed price / head", "number", 'placeholder="auto"')}</div>
+       <div class="grid2" style="margin-top:10px">${field(e, "depositPct", "Deposit %", "number")}<div><label>Deposit</label><input disabled value="${money(c.deposit)}"></div></div>`}
+    <p class="note" style="margin:10px 0 0">Tip: aim for food cost under ~30% and margin over 30%. ${plates ? "" : "Leave “fixed price” empty to auto-price from your costs + markup."}</p>
+  </div>
+
+  <div class="card"><h3>Costs</h3>
+    <div class="grid3">
+      ${field(e, "chefHours", "Your hours", "number")}${field(e, "chefRate", "Your rate / hr", "number")}${field(e, "wastePct", "Waste buffer %", "number")}
+      ${field(e, "staffCount", "Extra staff", "number")}${field(e, "staffHours", "Staff hours", "number")}${field(e, "staffRate", "Staff rate / hr", "number")}
+      ${field(e, "travel", "Travel", "number")}${field(e, "rentals", "Rentals / gear", "number")}${field(e, plates ? "stallFee" : "extras", plates ? "Pitch / stall fee" : "Other extras", "number")}
+    </div>
+    <table style="margin-top:12px">
+      <tr><td>Food (${c.dishes.length} dishes × ${num(e.guests)} + ${num(e.wastePct)}% waste)</td><td class="num">${money(c.food)}</td></tr>
+      <tr><td>Labour</td><td class="num">${money(c.labour)}</td></tr>
+      <tr><td>Travel, gear & fees</td><td class="num">${money(c.other)}</td></tr>
+      <tr class="total"><td>Total cost</td><td class="num">${money(c.cost)}</td></tr>
+    </table>
+  </div>
+
+  <div class="card"><h3>Payment</h3>
+    <label class="check" style="color:inherit;font-size:15px;font-weight:400;margin:0"><input type="checkbox" data-k="depositPaid" ${e.depositPaid ? "checked" : ""}><span>Deposit received ${plates ? "" : "(" + money(c.deposit) + ")"}</span></label>
+    <label class="check" style="color:inherit;font-size:15px;font-weight:400;margin:0"><input type="checkbox" data-k="paidInFull" ${e.paidInFull ? "checked" : ""}><span>Paid in full</span></label>
+  </div>
+  ${plates ? "" : `<button class="btn block" id="quote">📄 Create client quote (PDF)</button>
+  <button class="btn ghost block" style="margin-top:8px" id="msg">💬 Copy quote as message</button>`}`;
+  bindFields(box, e, k => { if (!["depositPaid", "paidInFull"].includes(k)) debounceRender(); });
+  if (!plates) {
+    box.querySelector("#quote").onclick = () => printQuote(e);
+    box.querySelector("#msg").onclick = () => copyText(quoteMessage(e), box.querySelector("#msg"));
+  }
+}
+let rt; function debounceRender() {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    const a = document.activeElement, k = a && a.dataset && a.dataset.k, pos = a && a.selectionStart;
+    render();
+    if (k) { const el = app.querySelector(`[data-k="${k}"]`); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (_) {} el.scrollIntoView({ block: "center" }); } }
+  }, 700);
+}
+
+function evShop(e, box) {
+  const list = shopping(e);
+  e.bought = e.bought || {};
+  const total = list.reduce((a, i) => a + i.cost, 0);
+  box.innerHTML = list.length ? `
+  <div class="card"><div class="row"><div class="grow"><b>Shopping for ${num(e.guests)}</b><div class="small muted">Includes ${num(e.wastePct)}% waste buffer</div></div><b>${money(total)}</b></div></div>
+  <div class="card">${list.map(i => `
+    <label class="check ${e.bought[i.key] ? "done" : ""}" style="color:inherit;font-size:15px;font-weight:400;margin:0">
+      <input type="checkbox" data-b="${esc(i.key)}" ${e.bought[i.key] ? "checked" : ""}>
+      <span class="grow">${esc(i.name)}</span><b>${fmtQty(i.qty)} ${esc(i.unit)}</b><span class="small muted" style="width:70px;text-align:right">${money(i.cost)}</span>
+    </label>`).join("")}</div>
+  <button class="btn ghost block" id="copy">📋 Copy list</button>`
+  : `<div class="empty">Pick dishes in the <b>Menu</b> tab and add ingredients to them — the shopping list builds itself.</div>`;
+  box.querySelectorAll("[data-b]").forEach(cb => cb.onchange = () => { e.bought[cb.dataset.b] = cb.checked; save(); cb.closest(".check").classList.toggle("done", cb.checked); });
+  const cp = box.querySelector("#copy");
+  if (cp) cp.onclick = () => copyText(`Shopping — ${e.title || e.type} (${num(e.guests)})\n` + list.map(i => `☐ ${i.name}: ${fmtQty(i.qty)} ${i.unit}`).join("\n"), cp);
+}
+
+function evPrep(e, box) {
+  e.tasks = e.tasks || []; e.packing = e.packing || [];
+  const auto = e.dishIds.map(dishById).filter(Boolean);
+  const list = (arr, key) => arr.map((t, i) => `<div class="check ${t.d ? "done" : ""}">
+      <input type="checkbox" data-${key}="${i}" ${t.d ? "checked" : ""}><span class="grow">${esc(t.t)}</span>
+      <button class="xbtn" data-x${key}="${i}" aria-label="Remove">×</button></div>`).join("");
+  box.innerHTML = `
+  <div class="card"><h3>Prep list</h3>
+    ${auto.length ? `<div class="small muted" style="margin-bottom:6px">From your menu:</div>${auto.map(d => `<div class="small">• <b>${esc(d.name)}</b> × ${num(e.guests)}${d.notes ? ` — <span class="muted">${esc(d.notes)}</span>` : ""}</div>`).join("")}<div style="height:10px"></div>` : ""}
+    ${list(e.tasks, "tk")}
+    <div class="row" style="margin-top:8px"><input id="newtk" placeholder="Add a task (e.g. Day before: braise ribs)"><button class="btn small" id="addtk">Add</button></div>
+  </div>
+  <div class="card"><h3>Packing list</h3>
+    ${list(e.packing, "pk")}
+    <div class="row" style="margin-top:8px"><input id="newpk" placeholder="Add item"><button class="btn small" id="addpk">Add</button></div>
+  </div>
+  ${e.dietary ? `<div class="card"><h3>⚠ Dietary</h3><div>${esc(e.dietary)}</div></div>` : ""}`;
+  const wire = (arr, key, inputId, btnId) => {
+    box.querySelectorAll(`[data-${key}]`).forEach(cb => cb.onchange = () => { arr[+cb.dataset[key]].d = cb.checked; save(); cb.parentElement.classList.toggle("done", cb.checked); });
+    box.querySelectorAll(`[data-x${key}]`).forEach(b => b.onclick = () => { arr.splice(+b.dataset["x" + key], 1); save(); render(); });
+    const add = () => { const v = box.querySelector("#" + inputId).value.trim(); if (v) { arr.push({ t: v, d: false }); save(); view.sub = "prep"; render(); } };
+    box.querySelector("#" + btnId).onclick = add;
+    box.querySelector("#" + inputId).onkeydown = ev => { if (ev.key === "Enter") add(); };
+  };
+  wire(e.tasks, "tk", "newtk", "addtk");
+  wire(e.packing, "pk", "newpk", "addpk");
+}
+
+/* ----- Quote ----- */
+function quoteMessage(e) {
+  const c = calc(e), b = S.brand;
+  const dt = e.date ? new Date(e.date + "T00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) : "TBC";
+  return `Hi ${e.client || "there"},\n\nThank you for your inquiry! Here's my proposal for ${e.title || "your event"} on ${dt} for ${num(e.guests)} guests:\n\n` +
+    COURSES.map(co => c.dishes.filter(d => d.course === co).map(d => `• ${d.name}`).join("\n")).filter(Boolean).join("\n") +
+    `\n\n${money(c.perHead)} per guest — ${money(c.revenue)} total.\nA ${num(e.depositPct)}% deposit (${money(c.deposit)}) secures the date.\n\n${b.terms}\n\nBest,\n${b.chef || b.name}${b.phone ? "\n" + b.phone : ""}`;
+}
+function printQuote(e) {
+  const c = calc(e), b = S.brand;
+  const dt = e.date ? new Date(e.date + "T00:00").toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "Date TBC";
+  document.getElementById("print").innerHTML = `
+    <div class="ph"><div><h1>${esc(b.name)}</h1><div>${esc(b.tagline)}</div></div>
+      <div style="text-align:right;font-size:10pt">${[b.chef, b.phone, b.email, b.instagram].filter(Boolean).map(esc).join("<br>")}</div></div>
+    <div style="font-size:10pt;color:#555">PROPOSAL · ${new Date().toLocaleDateString()}</div>
+    <h2 style="margin-top:6px">${esc(e.title || e.type)}</h2>
+    <div>Prepared for <b>${esc(e.client || "—")}</b><br>${esc(dt)}${e.time ? " · " + esc(e.time) : ""}${e.location ? " · " + esc(e.location) : ""}<br>${num(e.guests)} guests</div>
+    <h2>Menu</h2>
+    ${COURSES.map(co => { const l = c.dishes.filter(d => d.course === co); return l.length ? `<div class="course">${co}</div>${l.map(d => `<div class="dish">${esc(d.name)}</div>`).join("")}` : ""; }).join("")}
+    ${e.dietary ? `<p style="font-size:10pt"><i>Dietary needs noted: ${esc(e.dietary)}</i></p>` : ""}
+    <h2>Investment</h2>
+    <table>
+      <tr><td>${num(e.guests)} guests × ${money(c.perHead)}</td><td class="num">${money(c.revenue)}</td></tr>
+      <tr><td>Deposit to confirm (${num(e.depositPct)}%)</td><td class="num">${money(c.deposit)}</td></tr>
+      <tr><td><b>Balance due on the day</b></td><td class="num"><b>${money(c.revenue - c.deposit)}</b></td></tr>
+    </table>
+    <div class="foot">${esc(b.terms)}</div>`;
+  setTimeout(() => window.print(), 50);
+}
+function copyText(t, btn) {
+  const done = () => { const o = btn.textContent; btn.textContent = "✓ Copied"; setTimeout(() => btn.textContent = o, 1500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, () => prompt("Copy this:", t));
+  else prompt("Copy this:", t);
+}
+
+/* ----- Dishes ----- */
+function newDish() {
+  const d = { id: uid(), name: "", course: "Main", allergens: "", notes: "", ingredients: [{ name: "", qty: "", unit: "kg", cost: "" }] };
+  S.dishes.push(d); save(); return d;
+}
+function renderDishes() {
+  app.innerHTML = `<h2>Dishes</h2>
+    <p class="muted small" style="margin-top:-6px">Your recipe library. Add ingredients per portion once — every event's costing and shopping list uses them.</p>
+    ${S.dishes.length ? COURSES.map(co => { const l = S.dishes.filter(d => d.course === co); return l.length ? `<div class="card"><h3>${co}</h3>${l.map(d => `
+      <div class="row" style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" data-dish="${d.id}">
+        <div class="grow">${esc(d.name || "Untitled dish")}${d.allergens ? `<div class="small muted">⚠ ${esc(d.allergens)}</div>` : ""}</div>
+        <b class="small">${money(dishCost(d))}</b><span class="muted">›</span></div>`).join("")}</div>` : ""; }).join("")
+    : `<div class="empty">No dishes yet. Tap <b>+</b>.</div>`}`;
+  app.querySelectorAll("[data-dish]").forEach(r => r.onclick = () => { view.dishId = r.dataset.dish; render(); });
+  fab(() => { const d = newDish(); view.dishId = d.id; render(); });
+}
+function renderDish() {
+  const d = dishById(view.dishId);
+  if (!d) { view.dishId = null; return render(); }
+  const ingRows = () => d.ingredients.map((i, n) => `<div class="ing">
+      <input placeholder="Ingredient" data-i="${n}" data-f="name" value="${esc(i.name)}">
+      <input placeholder="Qty" inputmode="decimal" data-i="${n}" data-f="qty" value="${esc(i.qty)}">
+      <input placeholder="Unit" data-i="${n}" data-f="unit" value="${esc(i.unit)}">
+      <input placeholder="Cost/unit" inputmode="decimal" data-i="${n}" data-f="cost" value="${esc(i.cost)}">
+      <button class="xbtn" data-xi="${n}" aria-label="Remove">×</button></div>`).join("");
+  app.innerHTML = `<button class="back" id="bk">‹ Dishes</button>
+  <div class="card">
+    ${field(d, "name", "Dish name")}
+    <div class="grid2" style="margin-top:10px">
+      <div><label>Course</label><select data-k="course">${COURSES.map(c => `<option ${c === d.course ? "selected" : ""}>${c}</option>`).join("")}</select></div>
+      ${field(d, "allergens", "Allergens")}
+    </div>
+  </div>
+  <div class="card"><div class="row"><h3 class="grow" style="margin:0">Ingredients per portion</h3><b id="dc">${money(dishCost(d))}</b></div>
+    <div class="small muted" style="margin:6px 0 10px">e.g. Short rib · 0.3 · kg · 18 (price per kg)</div>
+    <div class="ing small muted" style="font-weight:600"><span>Name</span><span>Qty</span><span>Unit</span><span>${esc(S.brand.currency)}/unit</span><span></span></div>
+    <div id="ings">${ingRows()}</div>
+    <button class="btn ghost small" id="addi">+ Ingredient</button>
+  </div>
+  <div class="card"><label>Prep notes / method</label><textarea data-k="notes" placeholder="e.g. Braise day before, plate with micro herbs">${esc(d.notes)}</textarea></div>
+  <div class="row" style="gap:8px"><button class="btn grow" id="done">Done</button><button class="btn danger" id="del">Delete</button></div>`;
+  bindFields(app, d);
+  const wireIngs = () => {
+    app.querySelectorAll("[data-i]").forEach(el => el.oninput = () => { d.ingredients[+el.dataset.i][el.dataset.f] = el.value; save(); app.querySelector("#dc").textContent = money(dishCost(d)); });
+    app.querySelectorAll("[data-xi]").forEach(b => b.onclick = () => { d.ingredients.splice(+b.dataset.xi, 1); save(); app.querySelector("#ings").innerHTML = ingRows(); wireIngs(); app.querySelector("#dc").textContent = money(dishCost(d)); });
+  };
+  wireIngs();
+  app.querySelector("#addi").onclick = () => { d.ingredients.push({ name: "", qty: "", unit: "", cost: "" }); save(); app.querySelector("#ings").innerHTML = ingRows(); wireIngs(); const all = app.querySelectorAll('[data-f="name"]'); all[all.length - 1].focus(); };
+  const back = () => { view.dishId = null; render(); };
+  app.querySelector("#bk").onclick = back; app.querySelector("#done").onclick = back;
+  app.querySelector("#del").onclick = () => {
+    if (!confirm("Delete this dish? It will be removed from any event menus.")) return;
+    S.dishes = S.dishes.filter(x => x !== d); S.events.forEach(e => e.dishIds = e.dishIds.filter(id => id !== d.id)); save(); back();
+  };
+}
+
+/* ----- Money overview ----- */
+function renderMoney() {
+  const yr = new Date().getFullYear();
+  const rows = S.events.filter(e => (e.status === "Booked" || e.status === "Done") && (e.date || "").startsWith(String(yr)));
+  const tot = rows.reduce((a, e) => { const c = calc(e); a.rev += c.revenue; a.cost += c.cost; a.profit += c.profit; return a; }, { rev: 0, cost: 0, profit: 0 });
+  const owed = S.events.filter(e => (e.status === "Booked" || e.status === "Done") && !e.paidInFull && calc(e).mode === "quote");
+  const byType = {};
+  rows.forEach(e => { const c = calc(e); byType[e.type] = byType[e.type] || { n: 0, profit: 0 }; byType[e.type].n++; byType[e.type].profit += c.profit; });
+  app.innerHTML = `<h2>Money · ${yr}</h2>
+  <div class="stats">
+    <div class="stat"><b>${money(tot.rev)}</b><span>Takings</span></div>
+    <div class="stat"><b>${money(tot.profit)}</b><span>Profit</span></div>
+    <div class="stat"><b>${rows.length}</b><span>Gigs</span></div>
+  </div>
+  <div class="card"><h3>What earns most</h3>
+    ${Object.keys(byType).length ? `<table><tr><th>Type</th><th class="num">Gigs</th><th class="num">Profit</th><th class="num">Avg / gig</th></tr>
+    ${Object.entries(byType).sort((a, b) => b[1].profit - a[1].profit).map(([t, v]) => `<tr><td>${EVENT_TYPES[t]?.icon || ""} ${esc(t)}</td><td class="num">${v.n}</td><td class="num">${money(v.profit)}</td><td class="num">${money(v.profit / v.n)}</td></tr>`).join("")}</table>`
+    : `<div class="muted small">Mark events as Booked or Done to see this.</div>`}
+  </div>
+  <div class="card"><h3>Waiting for payment</h3>
+    ${owed.length ? owed.map(e => { const c = calc(e); return `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" data-ev="${e.id}">
+      <div class="grow">${esc(e.title || e.client || e.type)}<div class="small muted">${e.date || "No date"} · ${e.depositPaid ? "deposit paid" : "<span style='color:var(--bad)'>no deposit yet</span>"}</div></div>
+      <b>${money(e.depositPaid ? c.revenue - c.deposit : c.revenue)}</b></div>`; }).join("") : `<div class="muted small">All paid up 🎉</div>`}
+  </div>`;
+  app.querySelectorAll("[data-ev]").forEach(r => r.onclick = () => { view.tab = "events"; view.eventId = r.dataset.ev; view.sub = "costing"; render(); });
+}
+
+/* ----- Brand / settings ----- */
+const COLORS = ["#c2562d", "#1f6f5c", "#8a3b5c", "#2d4fa1", "#b8892b", "#1f2a24", "#6b4fbb", "#d14b4b"];
+function renderBrand() {
+  const b = S.brand;
+  app.innerHTML = `<h2>Your brand</h2>
+  <p class="muted small" style="margin-top:-6px">Everything here appears on your client quotes. Change it any time you rebrand.</p>
+  <div class="card">
+    ${field(b, "name", "Business name")}
+    <div style="margin-top:10px">${field(b, "tagline", "Tagline")}</div>
+    <div style="margin-top:10px"><label>Brand colour</label><div class="swatches">${COLORS.map(c => `<button style="background:${c}" class="${c === b.color ? "on" : ""}" data-c="${c}" aria-label="${c}"></button>`).join("")}
+      <input type="color" data-k="color" value="${esc(b.color)}" style="width:44px;height:36px;padding:2px;min-height:0"></div></div>
+  </div>
+  <div class="card"><h3>Contact (shown on quotes)</h3>
+    <div class="grid2">${field(b, "chef", "Your name")}${field(b, "phone", "Phone", "tel")}${field(b, "email", "Email", "email")}${field(b, "instagram", "Instagram / website")}</div>
+    <div class="grid2" style="margin-top:10px">${field(b, "currency", "Currency symbol")}</div>
+  </div>
+  <div class="card"><label>Booking terms (bottom of quotes)</label><textarea data-k="terms" style="min-height:110px">${esc(b.terms)}</textarea></div>
+  <div class="card"><h3>Backup</h3>
+    <p class="small muted" style="margin-top:0">Your data lives on this device only. Download a backup now and then, and use it to move to a new phone.</p>
+    <div class="row wrap" style="gap:8px">
+      <button class="btn ghost" id="exp">⬇ Download backup</button>
+      <label class="btn ghost" style="margin:0;color:var(--ink);font-size:16px">⬆ Restore<input type="file" accept=".json" id="imp" hidden></label>
+    </div>
+  </div>`;
+  bindFields(app, b, k => { if (["name", "tagline", "color"].includes(k)) applyBrand(); });
+  app.querySelectorAll("[data-c]").forEach(s => s.onclick = () => { b.color = s.dataset.c; save(); render(); });
+  app.querySelector("#exp").onclick = () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: "application/json" }));
+    a.download = (b.name || "kitchen").replace(/\W+/g, "-").toLowerCase() + "-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.click();
+  };
+  app.querySelector("#imp").onchange = ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    f.text().then(t => { try { const d = JSON.parse(t); if (!d.events || !d.dishes) throw 0; if (confirm("Replace everything with this backup?")) { d.brand = { ...DEFAULT_BRAND, ...d.brand }; S = d; save(); render(); } } catch (_) { alert("That file isn't a valid backup."); } });
+  };
+}
+
+/* ---------------- Boot ---------------- */
+S = load();
+document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => { view.tab = b.dataset.tab; view.eventId = null; view.dishId = null; render(); });
+render();
+</script>
+</body>
+</html>
