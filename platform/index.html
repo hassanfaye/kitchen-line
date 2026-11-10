@@ -1,619 +1,972 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
 <title>Chef on Call</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
-  /* Layout: phone-first app — sticky header, one column of cards, bottom tab bar that changes per side (client / chef / plan). */
+  /* Layout: iOS-style app. Translucent nav bar + large titles, inset grouped lists, bottom sheets, translucent tab bar.
+     Guest side: warm, photo-led discovery like a hotel app. Chef side: three practical tabs (Bookings, Tools, Extras). */
   :root {
-    --bg: #f4f5f1; --card: #ffffff; --ink: #14231c; --muted: #5f6b64; --line: #e1e4dd;
-    --accent: #d9921a; --accent-ink: #ffffff; --accent-soft: #fbf0dc;
-    --head: #14231c; --head-ink: #f4f5f1; --head-muted: #a9b5ae;
-    --good: #2c7a4b; --warn: #b26b00; --bad: #b3372f; --chip: #eceee8;
-    --overlay: rgba(10, 18, 14, .55);
-    --display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
-    --body: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
-    --r: 16px;
+    --bg: #f8f3ec; --card: #ffffff; --fill: #f1ebe3; --ink: #1f1a16; --sec: #7b6f64; --sep: #e8dfd4;
+    --accent: #e0742c; --accent-ink: #ffffff; --accent-soft: #fbe9db;
+    --good: #2f8a55; --bad: #d1443a; --warn: #b8690f;
+    --bar: rgba(248, 243, 236, .82); --shadow: 0 1px 2px rgba(60, 40, 20, .06), 0 8px 24px rgba(60, 40, 20, .07);
+    --overlay: rgba(25, 18, 12, .42);
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+    --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #0f1512; --card: #18201c; --ink: #e9eee9; --muted: #98a59d; --line: #2a342f;
-      --accent-soft: #3a2c12; --head: #0a0f0c; --chip: #222b26; color-scheme: dark;
+      --bg: #15110e; --card: #221c17; --fill: #2c251f; --ink: #f6efe7; --sec: #ab9d90; --sep: #3a3129;
+      --accent: #f0883f; --accent-soft: #3b2616; --bar: rgba(21, 17, 14, .8); --shadow: none; --overlay: rgba(0,0,0,.55); color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #0f1512; --card: #18201c; --ink: #e9eee9; --muted: #98a59d; --line: #2a342f;
-    --accent-soft: #3a2c12; --head: #0a0f0c; --chip: #222b26; color-scheme: dark;
+    --bg: #15110e; --card: #221c17; --fill: #2c251f; --ink: #f6efe7; --sec: #ab9d90; --sep: #3a3129;
+    --accent: #f0883f; --accent-soft: #3b2616; --bar: rgba(21, 17, 14, .8); --shadow: none; --overlay: rgba(0,0,0,.55); color-scheme: dark;
   }
-  * { box-sizing: border-box; }
-  body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); margin: 0;
-    padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
-  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--head); }
-  h1, h2, h3 { font-family: var(--display); letter-spacing: -.01em; text-wrap: balance; margin: 0; }
-  button { font: inherit; color: inherit; cursor: pointer; }
-  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.4 var(--font); letter-spacing: -.01em;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); -webkit-font-smoothing: antialiased; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bar); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+  img { max-width: 100%; display: block; }
 
-  header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; background: var(--head); color: var(--head-ink);
-    padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .top-in { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
-  .mark { width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 800 15px var(--display); flex: none; }
-  .brand { font: 800 18px var(--display); }
-  .side { margin-left: auto; display: flex; background: rgba(255,255,255,.08); border-radius: 99px; padding: 3px; }
-  .side button { border: 0; background: none; color: var(--head-muted); font-size: 13px; font-weight: 600; padding: 6px 11px; border-radius: 99px; }
-  .side button.on { background: var(--head-ink); color: var(--head); }
+  .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 8; background: var(--bar); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: .5px solid var(--sep); padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .nav-in { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 8px; min-height: 36px; }
+  .back { color: var(--accent); font-size: 17px; display: flex; align-items: center; gap: 2px; min-height: 44px; }
+  .back svg { width: 22px; height: 22px; }
+  .seg { display: inline-flex; background: var(--fill); border-radius: 9px; padding: 2px; margin-left: auto; }
+  .seg button { font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 7px; color: var(--sec); min-height: 32px; }
+  .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .seg.full { display: flex; margin: 0; }
+  .seg.full button { flex: 1; }
 
-  main { max-width: 720px; margin: 0 auto; padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+  main { max-width: 760px; margin: 0 auto; padding-block: 6px 20px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
   main > * { min-width: 0; }
-  nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 6; background: var(--card); border-top: 1px solid var(--line);
-    display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
-  nav.tabs button { flex: 1; max-width: 180px; border: 0; background: none; padding: 9px 4px 11px; font-size: 12px; font-weight: 600; color: var(--muted); display: grid; justify-items: center; gap: 2px; }
-  nav.tabs button svg { width: 22px; height: 22px; }
-  nav.tabs button.on { color: var(--accent); }
-  .badge-dot { background: var(--bad); color: #fff; border-radius: 99px; font-size: 10px; padding: 0 5px; margin-left: 3px; }
-
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; }
-  .stack { display: grid; gap: 10px; }
-  .row { display: flex; gap: 10px; align-items: center; }
-  .wrap { flex-wrap: wrap; }
-  .grow { flex: 1; min-width: 0; }
-  .muted { color: var(--muted); }
-  .sm { font-size: 13px; }
-  .xs { font-size: 12px; }
+  .large { font: 700 34px/1.12 var(--display); letter-spacing: .005em; margin: 6px 0 0; text-wrap: balance; }
+  .subtitle { color: var(--sec); font-size: 15px; margin-top: 2px; }
+  h2.sec { font: 700 22px/1.2 var(--display); margin: 0; letter-spacing: -.01em; }
+  .sec-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .sec-head > :last-child:not(:first-child) { margin-left: auto; }
+  .muted { color: var(--sec); }
+  .fn { font-size: 13px; }
+  .cap { font-size: 12px; }
   .num { font-variant-numeric: tabular-nums; }
-  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 99px; background: var(--chip); white-space: nowrap; }
-  .chip.on { background: var(--ink); color: var(--bg); }
-  .chip.good { color: var(--good); }
-  .chip.accent { background: var(--accent-soft); color: var(--warn); }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .scroll-x { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
-  .scroll-x > * { flex: none; }
-  .btn { border: 0; border-radius: 12px; padding: 12px 16px; min-height: 46px; font-weight: 700; background: var(--accent); color: var(--accent-ink); }
-  .btn.dark { background: var(--ink); color: var(--bg); }
-  .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  .stack { display: grid; gap: 12px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .grow { flex: 1; min-width: 0; }
+  .hscroll { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; padding-bottom: 4px; }
+  .hscroll::-webkit-scrollbar { display: none; }
+  .hscroll > * { flex: none; scroll-snap-align: start; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 17px; border-radius: 14px; min-height: 50px; padding: 0 20px; }
   .btn.block { width: 100%; }
-  .btn.sm { min-height: 36px; padding: 7px 12px; font-size: 14px; }
-  .back { border: 0; background: none; color: var(--accent); font-weight: 700; padding: 0; justify-self: start; }
-  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
-  input, select, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; min-height: 44px; }
-  textarea { min-height: 70px; resize: vertical; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .avatar { width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; font: 800 20px var(--display); color: #fff; flex: none; }
-  .avatar.lg { width: 76px; height: 76px; border-radius: 22px; font-size: 28px; }
-  .star { color: var(--accent); }
-  .hero { background: var(--head); color: var(--head-ink); border-radius: var(--r); padding: 22px 18px; display: grid; gap: 12px; }
-  .hero h1 { font-size: 30px; line-height: 1.05; }
-  .hero p { margin: 0; color: var(--head-muted); }
-  .hero .chip { background: rgba(255,255,255,.1); color: var(--head-ink); border: 0; }
-  .hero .chip.on { background: var(--accent); color: var(--accent-ink); }
-  .chef { display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%; border: 1px solid var(--line); background: var(--card); border-radius: var(--r); padding: 14px; }
-  .price { font: 800 18px var(--display); }
-  .menu-opt { border: 1px solid var(--line); border-radius: 14px; padding: 14px; text-align: left; width: 100%; background: var(--card); display: grid; gap: 6px; }
-  .menu-opt.on { border: 2px solid var(--accent); padding: 13px; }
-  .courses { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
-  .stepper { display: flex; align-items: center; gap: 12px; }
-  .stepper button { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-size: 20px; font-weight: 700; }
-  .stepper b { font: 800 24px var(--display); min-width: 36px; text-align: center; }
-  .tick { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--ink); font-weight: 500; margin: 0; }
-  .tick:last-child { border-bottom: 0; }
-  .tick input { width: 22px; height: 22px; min-height: 0; flex: none; accent-color: var(--accent); }
+  .btn.sm { min-height: 34px; font-size: 15px; border-radius: 99px; padding: 0 14px; }
+  .btn.tint { background: var(--accent-soft); color: var(--accent); }
+  .btn.plain { background: var(--fill); color: var(--ink); }
+  .btn.dest { background: var(--fill); color: var(--bad); }
+  .btn[disabled] { opacity: .45; }
+
+  .list { background: var(--card); border-radius: 12px; overflow: hidden; }
+  .list-h { font-size: 13px; color: var(--sec); text-transform: uppercase; letter-spacing: .02em; margin: 0 16px 7px; }
+  .list-f { font-size: 13px; color: var(--sec); margin: 7px 16px 0; }
+  .cell { display: flex; align-items: center; gap: 12px; padding: 11px 16px; min-height: 44px; width: 100%; text-align: left; position: relative; }
+  .cell + .cell::before { content: ""; position: absolute; top: 0; right: 0; left: 16px; border-top: .5px solid var(--sep); }
+  .cell.ic + .cell.ic::before { left: 58px; }
+  .cell .chev { color: var(--sec); opacity: .5; width: 14px; height: 14px; flex: none; display: grid; }
+  .cell .val { color: var(--sec); font-size: 15px; }
+  .icon-sq { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; flex: none; }
+  .icon-sq svg { width: 18px; height: 18px; }
+  .cell input, .cell select { border: 0; background: none; font: inherit; color: var(--ink); text-align: right; min-width: 0; flex: 1; padding: 0; min-height: 30px; }
+  .cell input:focus { outline: none; }
+  .field { display: grid; gap: 4px; }
+  .field label { font-size: 13px; color: var(--sec); }
+  .field input, .field textarea, .field select { width: 100%; font: inherit; color: var(--ink); background: var(--fill); border: 0; border-radius: 10px; padding: 11px 12px; min-height: 44px; }
+  .field textarea { min-height: 84px; resize: vertical; }
+
+  .switch { position: relative; width: 51px; height: 31px; flex: none; }
+  .switch input { opacity: 0; position: absolute; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
+  .switch span { position: absolute; inset: 0; background: var(--sep); border-radius: 99px; transition: background .2s; }
+  .switch span::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .2s; }
+  .switch input:checked + span { background: #34c759; }
+  .switch input:checked + span::after { transform: translateX(20px); }
+
+  .slider { position: relative; border-radius: 18px; overflow: hidden; background: var(--fill); }
+  .slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; height: 100%; }
+  .slides::-webkit-scrollbar { display: none; }
+  .slide { flex: 0 0 100%; scroll-snap-align: center; position: relative; height: 100%; }
+  .slide > svg, .slide > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dots { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.55); transition: background .2s, transform .2s; }
+  .dots i.on { background: #fff; transform: scale(1.2); }
+  .hero { height: 360px; }
+  .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(20,10,4,.75) 100%); }
+  .copy { position: absolute; left: 18px; right: 18px; bottom: 32px; color: #fff; display: grid; gap: 6px; }
+  .copy b { font: 700 28px/1.1 var(--display); text-wrap: balance; }
+  .copy span { font-size: 15px; opacity: .92; }
+  .copy .btn { justify-self: start; margin-top: 6px; background: #fff; color: #1f1a16; }
+  .heart { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; background: rgba(0,0,0,.28); backdrop-filter: blur(8px); color: #fff; display: grid; place-items: center; z-index: 2; }
+  .heart svg { width: 20px; height: 20px; }
+  .heart.on { color: #ff5a5f; background: rgba(255,255,255,.92); }
+  .tag { position: absolute; top: 12px; left: 12px; z-index: 2; background: rgba(255,255,255,.94); color: #1f1a16; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 99px; }
+  .tag.deal { background: #d1443a; color: #fff; }
+
+  .search { display: flex; align-items: center; gap: 12px; width: 100%; background: var(--card); border-radius: 99px; padding: 8px 8px 8px 18px; box-shadow: var(--shadow); text-align: left; border: .5px solid var(--sep); }
+  .search b { display: block; font-size: 15px; }
+  .search span.s { font-size: 13px; color: var(--sec); }
+  .search .go { margin-left: auto; width: 42px; height: 42px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; flex: none; }
+  .search .go svg { width: 20px; height: 20px; }
+
+  .cat { display: grid; justify-items: center; gap: 6px; width: 78px; font-size: 12px; font-weight: 600; color: var(--sec); text-align: center; }
+  .cat .bub { width: 60px; height: 60px; border-radius: 18px; background: var(--card); display: grid; place-items: center; color: var(--accent); box-shadow: var(--shadow); border: .5px solid var(--sep); }
+  .cat .bub svg { width: 28px; height: 28px; }
+  .cat.on { color: var(--ink); }
+  .cat.on .bub { background: var(--accent); color: #fff; border-color: transparent; }
+
+  .chef-card { display: grid; gap: 10px; text-align: left; width: 100%; cursor: pointer; }
+  .chef-card .slider { height: 240px; }
+  .meta { display: grid; gap: 2px; }
+  .meta .top { display: flex; gap: 8px; align-items: baseline; }
+  .meta .top b { font-size: 17px; flex: 1; min-width: 0; }
+  .star { font-size: 15px; white-space: nowrap; }
+  .star svg { width: 13px; height: 13px; vertical-align: -1px; }
+  .mini { width: 250px; display: grid; gap: 8px; text-align: left; cursor: pointer; }
+  .mini .slider { height: 170px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--fill); color: var(--sec); }
+  .pill.good { color: var(--good); }
+
+  .promo { border-radius: 18px; padding: 16px; color: #fff; display: grid; gap: 4px; text-align: left; min-height: 150px; align-content: end; position: relative; overflow: hidden; width: 100%; }
+  .promo b { font: 700 19px/1.15 var(--display); }
+  .promo span { font-size: 13px; opacity: .92; }
+  .promo .big-ic { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; opacity: .9; }
+  .promo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .banner { display: flex; gap: 14px; align-items: center; background: var(--accent-soft); border-radius: 18px; padding: 14px 16px; text-align: left; width: 100%; }
+  .code { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; background: var(--card); color: var(--accent); padding: 4px 8px; border-radius: 6px; border: 1px dashed var(--accent); white-space: nowrap; }
+  .review { width: 280px; background: var(--card); border-radius: 18px; padding: 16px; display: grid; gap: 8px; box-shadow: var(--shadow); align-content: start; }
+  .review .who { display: flex; gap: 10px; align-items: center; }
+  .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; flex: none; }
+  .stars { color: #f4a62a; letter-spacing: 1px; font-size: 14px; }
+  .trust { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .trust div { background: var(--card); border-radius: 14px; padding: 14px; display: grid; gap: 4px; align-content: start; }
+  .trust svg { width: 24px; height: 24px; color: var(--good); }
+  .trust b { font-size: 15px; }
+
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--bar); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-top: .5px solid var(--sep); display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+  .tabbar button { flex: 1; max-width: 160px; display: grid; justify-items: center; gap: 2px; padding: 7px 0 6px; font-size: 10px; font-weight: 600; color: var(--sec); min-height: 49px; position: relative; }
+  .tabbar svg { width: 25px; height: 25px; }
+  .tabbar button.on { color: var(--accent); }
+  .tabbar .badge { position: absolute; top: 3px; left: calc(50% + 6px); background: var(--bad); color: #fff; font-size: 11px; min-width: 18px; height: 18px; border-radius: 9px; display: grid; place-items: center; padding: 0 5px; }
+
+  .sheet-wrap { position: fixed; inset: 0; z-index: 30; background: var(--overlay); display: flex; align-items: flex-end; justify-content: center; }
+  .sheet { background: var(--bg); width: 100%; max-width: 640px; max-height: calc(100% - 40px - env(safe-area-inset-top, 0px)); overflow-y: auto; border-radius: 14px 14px 0 0;
+    padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 16px; align-content: start; }
+  .grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--sep); margin: 0 auto; }
+  .sheet-head { display: flex; align-items: center; gap: 8px; }
+  .sheet-head h3 { font: 700 20px var(--display); margin: 0; flex: 1; }
+  .close { width: 30px; height: 30px; border-radius: 50%; background: var(--fill); color: var(--sec); display: grid; place-items: center; }
+  .close svg { width: 14px; height: 14px; }
+  @media (prefers-reduced-motion: no-preference) { .sheet { animation: up .32s cubic-bezier(.2,.9,.3,1); } @keyframes up { from { transform: translateY(40%); opacity: .4; } } }
+  .stepper { display: inline-flex; align-items: center; background: var(--fill); border-radius: 9px; }
+  .stepper button { width: 44px; height: 34px; font-size: 20px; color: var(--ink); }
+  .stepper b { min-width: 34px; text-align: center; font-size: 17px; }
   table { width: 100%; border-collapse: collapse; }
-  td { padding: 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-  td:last-child { text-align: right; white-space: nowrap; padding-left: 10px; }
-  tr.tot td { border-bottom: 0; font-weight: 800; font-size: 17px; }
-  .note { background: var(--accent-soft); border-radius: 12px; padding: 11px 12px; font-size: 13px; }
-  .allergy { background: color-mix(in srgb, var(--bad) 12%, transparent); color: var(--bad); border-radius: 10px; padding: 8px 10px; font-weight: 600; font-size: 14px; }
-  .status { font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; }
-  .status.new { background: var(--accent-soft); color: var(--warn); }
-  .status.accepted { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
-  .status.declined { background: var(--chip); color: var(--muted); }
-  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
-  .kpi b { display: block; font: 800 19px var(--display); }
-  .kpi span { font-size: 11px; color: var(--muted); font-weight: 600; }
-  .bars { display: grid; gap: 8px; }
-  .bar { display: grid; grid-template-columns: 110px 1fr 70px; gap: 8px; align-items: center; font-size: 13px; }
-  .bar i { display: block; height: 12px; border-radius: 6px; background: var(--accent); }
-  .bar i.alt { background: var(--muted); }
-  .pain { display: grid; grid-template-columns: 30px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-  .pain:last-child { border-bottom: 0; }
-  .pain .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--warn); display: grid; place-items: center; font-weight: 800; }
-  .pain p { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
-  .sample { font-size: 11px; font-weight: 700; color: var(--muted); border: 1px dashed var(--line); border-radius: 99px; padding: 2px 8px; }
-  .done-ic { width: 64px; height: 64px; border-radius: 50%; background: var(--good); color: #fff; display: grid; place-items: center; font-size: 32px; margin: 0 auto; }
-  .empty { text-align: center; color: var(--muted); padding: 24px 8px; }
+  .sum td { padding: 6px 0; font-size: 15px; vertical-align: top; }
+  .sum td:last-child { text-align: right; padding-left: 10px; white-space: nowrap; }
+  .sum tr.tot td { font-weight: 700; font-size: 17px; padding-top: 10px; border-top: .5px solid var(--sep); }
+  .allergy { background: color-mix(in srgb, var(--bad) 13%, transparent); color: var(--bad); border-radius: 10px; padding: 9px 12px; font-weight: 600; font-size: 15px; }
+  .note { background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+  .done { text-align: center; display: grid; gap: 10px; justify-items: center; padding: 20px 0; }
+  .ok { width: 72px; height: 72px; border-radius: 50%; background: var(--good); color: #fff; display: grid; place-items: center; }
+  .ok svg { width: 36px; height: 36px; }
+
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; background: var(--card); border-radius: 14px; padding: 8px 6px; }
+  .week button { display: grid; justify-items: center; gap: 2px; padding: 6px 0; border-radius: 10px; font-size: 12px; color: var(--sec); }
+  .week button b { font-size: 17px; color: var(--ink); }
+  .week button.on { background: var(--accent); color: #fff; }
+  .week button.on b { color: #fff; }
+  .week i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .week button.on i { background: #fff; }
+  .week i.none { background: transparent; }
+  .bk { background: var(--card); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; text-align: left; width: 100%; }
+  .bk .top { display: flex; align-items: center; gap: 10px; }
+  .status { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .status.new { background: var(--accent-soft); color: var(--accent); }
+  .status.accepted { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
+  .status.declined { background: var(--fill); color: var(--sec); }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat { background: var(--card); border-radius: 14px; padding: 12px 14px; }
+  .stat b { display: block; font: 700 20px var(--display); }
+  .stat span { font-size: 12px; color: var(--sec); }
+  .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tool { background: var(--card); border-radius: 18px; padding: 16px; display: grid; gap: 8px; text-align: left; align-content: start; min-height: 136px; }
+  .tool .icon-sq { width: 40px; height: 40px; border-radius: 11px; }
+  .tool .icon-sq svg { width: 22px; height: 22px; }
+  .tool b { font-size: 16px; }
+  .tool > span:not(.icon-sq) { font-size: 13px; color: var(--sec); }
+  .result { background: var(--card); border-radius: 14px; padding: 16px; display: grid; gap: 4px; text-align: center; }
+  .result b { font: 700 34px var(--display); color: var(--accent); }
+  .bars { display: grid; gap: 10px; }
+  .bar { display: grid; grid-template-columns: 96px 1fr 72px; gap: 10px; align-items: center; font-size: 14px; }
+  .bar i { display: block; height: 10px; border-radius: 5px; background: var(--accent); }
+  .bar i.alt { background: var(--sec); opacity: .45; }
+  .bar b { text-align: right; }
+  .tl { display: grid; grid-template-columns: 70px 18px 1fr; gap: 8px; align-items: start; min-height: 46px; }
+  .tl .t { font-weight: 700; font-size: 15px; text-align: right; }
+  .tl .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin-top: 5px; position: relative; justify-self: center; }
+  .tl:not(:last-child) .dot::after { content: ""; position: absolute; left: 5px; top: 12px; width: 2px; height: 38px; background: var(--sep); }
+  .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ph { aspect-ratio: 1; border-radius: 12px; overflow: hidden; position: relative; background: var(--fill); max-width: 100%; }
+  .ph img { width: 100%; height: 100%; object-fit: cover; }
+  .ph button { position: absolute; top: 6px; right: 6px; min-width: 28px; height: 28px; border-radius: 14px; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; padding: 0 8px; }
+  .ph.add { display: grid; place-items: center; color: var(--accent); font-size: 34px; border: 2px dashed var(--sep); background: none; cursor: pointer; }
+  .matrix { overflow-x: auto; }
+  .matrix table { font-size: 13px; min-width: 560px; }
+  .matrix th, .matrix td { padding: 6px 4px; text-align: center; border-bottom: .5px solid var(--sep); }
+  .matrix th:first-child, .matrix td:first-child { text-align: left; padding-left: 12px; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 40; background: rgba(30,24,20,.92); color: #fff; padding: 11px 18px; border-radius: 99px; font-size: 15px; font-weight: 600; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
   a { color: var(--accent); }
-  .phase { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-  .phase:last-child { border-bottom: 0; }
-  .phase b.when { font: 800 13px var(--display); color: var(--accent); }
-  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 99px; font-weight: 600; font-size: 14px; }
-  @media (max-width: 380px) { .kpis { grid-template-columns: 1fr 1fr; } .bar { grid-template-columns: 90px 1fr 62px; } }
-  @media (prefers-reduced-motion: no-preference) { main > * { animation: in .25s ease both; } @keyframes in { from { transform: translateY(6px); } } }
+  @media (max-width: 370px) { .promo-grid, .tools, .trust { grid-template-columns: 1fr; } .stat-row { grid-template-columns: 1fr 1fr; } }
 </style>
 
-<header class="top"><div class="top-in">
-  <div class="mark" id="mark">C</div>
-  <div class="brand" id="brand">Chef on Call</div>
-  <div class="side" role="tablist" aria-label="Switch side">
-    <button data-side="client">Client</button><button data-side="chef">Chef</button><button data-side="plan">Plan</button>
-  </div>
-</div></header>
+<header class="nav"><div class="nav-in" id="nav"></div></header>
 <main id="app"></main>
-<nav class="tabs" id="tabs"></nav>
+<nav class="tabbar" id="tabbar" aria-label="Tabs"></nav>
 
 <script>
 /* =====================================================================
-   CHEF ON CALL — prototype of a "book a chef" platform.
-   Client side: find a chef, see an all-in price, book with a deposit,
-   pre-order at pop-ups. Chef side: requests with every detail up front,
-   payouts, menus, pre-orders. Plan side: research + business plan.
-   Rebrand: change BRAND below (or Chef > Settings in the app).
-   Prototype only: data stays on this device; no real payments.
+   CHEF ON CALL — prototype of a "book a private chef" app.
+   Rebrand: change BRAND (or Chef > Extras > Brand & settings in the app).
+   Prototype: data stays on this device, payments are pretend.
    ===================================================================== */
-const BRAND = { name: "Chef on Call", currency: "$", feePct: 10, depositPct: 30, rivalCommission: 20 };
+const BRAND = { name: "Chef on Call", currency: "$", feePct: 10, depositPct: 30, rivalCommission: 20, welcome: 40 };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const day = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 const fmtDate = s => s ? new Date(s + "T00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) : "";
 const daysAway = s => Math.round((new Date(s + "T00:00") - new Date(new Date().toDateString())) / 864e5);
+const hr = new Date().getHours();
+const greet = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
 
-/* ---------- sample data (clearly marked as samples in the UI) ---------- */
-function seed() {
-  const chefs = [
-    { id: "you", you: true, name: "Your Name", area: "Your city", cuisine: "Modern Mediterranean", color: "#d9921a", rating: 4.9, count: 37, tonight: true, years: 9,
-      bio: "Ex-restaurant chef cooking intimate dinners, pop-ups and market food. Seasonal produce, big flavours, zero stress for the host.",
-      badges: ["Food hygiene L2", "Insured", "Allergen trained", "ID verified"],
-      menus: [
-        { id: "m1", name: "Signature 3-course", price: 85, min: 4, courses: ["Burrata, heritage tomato, basil oil", "Slow-braised lamb shoulder, smoked aubergine", "Olive oil cake, poached figs"] },
-        { id: "m2", name: "Sharing feast", price: 65, min: 6, courses: ["Mezze table & flatbreads", "Charred chicken, herb rice, pickles", "Baklava & mint tea"] },
-        { id: "m3", name: "Tasting menu (6 courses)", price: 140, min: 2, courses: ["Snacks", "Crudo", "Pasta", "Fish", "Meat", "Dessert"] } ],
-      reviews: [ { who: "Sample review · Maya", stars: 5, text: "Felt like a restaurant in our living room, and the kitchen was cleaner than before." },
-                 { who: "Sample review · Tom", stars: 5, text: "Handled two allergies without fuss. Booking took 3 minutes." } ] },
-    { id: "c2", name: "Amara Okafor", area: "Downtown", cuisine: "West African fusion", color: "#2c7a4b", rating: 4.8, count: 52, tonight: false, years: 7,
-      bio: "Jollof, suya and smoke. Family-style feasts for celebrations.", badges: ["Food hygiene L2", "Insured", "ID verified"],
-      menus: [ { id: "a1", name: "Celebration feast", price: 70, min: 8, courses: ["Suya skewers", "Party jollof, plantain, slaw", "Puff-puff, salted caramel"] } ], reviews: [] },
-    { id: "c3", name: "Kenji Mori", area: "Riverside", cuisine: "Japanese omakase", color: "#3b5bb5", rating: 5.0, count: 21, tonight: true, years: 12,
-      bio: "Counter-style omakase at your table, 8–12 guests max.", badges: ["Food hygiene L3", "Insured", "Allergen trained", "ID verified"],
-      menus: [ { id: "k1", name: "Omakase 10 pieces + 3 plates", price: 160, min: 4, courses: ["Chawanmushi", "10-piece nigiri", "Wagyu tataki", "Yuzu sorbet"] } ], reviews: [] },
-    { id: "c4", name: "Lucía Reyes", area: "Old Town", cuisine: "Spanish tapas & paella", color: "#b3372f", rating: 4.7, count: 64, tonight: true, years: 6,
-      bio: "Giant paella cooked live in your garden. Great for 10–40.", badges: ["Food hygiene L2", "Insured"],
-      menus: [ { id: "l1", name: "Paella party", price: 48, min: 10, courses: ["Tapas: croquetas, pan con tomate, jamón", "Seafood or veggie paella (live)", "Crema catalana"] } ], reviews: [] },
-  ];
-  const popups = [
-    { id: "p1", chefId: "you", title: "Weekend market booth", place: "Central farmers' market", date: day(5), time: "10:00–15:00", cap: 150,
-      items: [ { name: "Lamb flatbread", price: 13 }, { name: "Halloumi & hot honey wrap", price: 11 }, { name: "Olive oil cake", price: 5 } ], sold: { 0: 38, 1: 21, 2: 30 } },
-    { id: "p2", chefId: "c3", title: "Ramen night pop-up", place: "The Yard, Riverside", date: day(9), time: "18:00–22:00", cap: 60,
-      items: [ { name: "Tonkotsu ramen", price: 17 }, { name: "Karaage", price: 8 } ], sold: { 0: 41, 1: 25 } },
-  ];
-  const bookings = [
-    { id: uid(), chefId: "you", menuId: "m1", date: day(3), time: "19:30", guests: 8, client: "Sample · Priya S.", phone: "", allergies: "1 guest: tree nuts (severe)", diet: "2 vegetarian",
-      kitchen: { oven: true, hob: "Induction", plates: true, parking: false }, notes: "Surprise birthday — arrive by 17:00 via side gate.", status: "new", created: Date.now() - 36e5 },
-    { id: uid(), chefId: "you", menuId: "m2", date: day(12), time: "13:00", guests: 14, client: "Sample · Dan & Co", phone: "", allergies: "", diet: "1 gluten-free",
-      kitchen: { oven: true, hob: "Gas", plates: false, parking: true }, notes: "Team lunch in the office kitchen.", status: "accepted", created: Date.now() - 864e5 * 2 },
-    { id: uid(), chefId: "you", menuId: "m3", date: day(-6), time: "20:00", guests: 4, client: "Sample · Olivia R.", phone: "", allergies: "", diet: "",
-      kitchen: { oven: true, hob: "Gas", plates: true, parking: true }, notes: "", status: "accepted", created: Date.now() - 864e5 * 12 },
-  ];
-  return { brand: { ...BRAND }, chefs, popups, bookings, preorders: [] };
+/* ---------- SF-style icons ---------- */
+const P = (d, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
+const I = {
+  back: P('<path d="M15 5l-7 7 7 7"/>', 'stroke-width="2.4"'), chev: P('<path d="M9 5l7 7-7 7"/>', 'stroke-width="2.6"'), x: P('<path d="M6 6l12 12M18 6 6 18"/>', 'stroke-width="2.8"'),
+  search: P('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', 'stroke-width="2.4"'), heart: P('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/>'),
+  heartF: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>',
+  compass: P('<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/>'), tent: P('<path d="M3 20 12 4l9 16Z"/><path d="M12 20v-6"/>'), cal: P('<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  tray: P('<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6Z"/>'), wrench: P('<path d="M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3Z"/><path d="M14.5 6.5 17 4"/>'), grid: P('<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>'),
+  candle: P('<path d="M12 3c1.5 2 1.5 3.5 0 5-1.5-1.5-1.5-3 0-5Z"/><rect x="9" y="10" width="6" height="11" rx="1"/>'), cake: P('<path d="M4 21h16v-8H4Z"/><path d="M4 16c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 4 0"/><path d="M12 9v4M12 5v1"/>'),
+  sun: P('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/>'),
+  people: P('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17 14.5c2.3 0 4 1.5 4.5 4"/>'),
+  gift: P('<rect x="3" y="9" width="18" height="12" rx="2"/><path d="M12 9v12M3 13h18M12 9C9 9 7 5 9.5 4.5S12 9 12 9Zm0 0c3 0 5-4 2.5-4.5S12 9 12 9Z"/>'),
+  share: P('<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>'), briefcase: P('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/>'),
+  snow: P('<path d="M12 2v20M4 7l16 10M20 7 4 17"/>'), shield: P('<path d="M12 3 5 6v6c0 4.5 3 7.7 7 9 4-1.3 7-4.5 7-9V6Z"/><path d="m9 12 2 2 4-4"/>'), lock: P('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
+  leaf: P('<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19 13 11"/>'), refresh: P('<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>'),
+  check: P('<path d="m5 12 5 5 9-10"/>', 'stroke-width="3"'), calc: P('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>'),
+  scale: P('<path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 0 0 6 0Zm14 0-3 7a3 3 0 0 0 6 0Z"/>'), clock: P('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  alert: P('<path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/>'), msg: P('<path d="M4 5h16v11H8l-4 4Z"/>'),
+  coin: P('<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5M12 6v2M12 16v2"/>'),
+  book: P('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2Z"/><path d="M4 19a2 2 0 0 0 2 2h13"/>'), tag: P('<path d="M3 12V4h8l10 10-8 8Z"/><circle cx="7.5" cy="8.5" r="1.5"/>'),
+  photo: P('<rect x="3" y="5" width="18" height="15" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>'), user: P('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
+  bulb: P('<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3Z"/>'), gear: P('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>'),
+  pan: P('<path d="M3 11h14a7 7 0 0 1-14 0Z"/><path d="M17 12h4"/><path d="M8 7c0-1.5 1-1.5 1-3M12 7c0-1.5 1-1.5 1-3"/>'),
+};
+
+/* ---------- warm illustrated scenes (stand-ins until real photos are added in Chef > Extras > Photos) ---------- */
+let sid = 0;
+function scene(kind, hue = 25) {
+  const k = "s" + (++sid), h = n => `hsl(${(hue + n + 360) % 360}`;
+  const glow = `<radialGradient id="${k}gl"><stop offset="0" stop-color="#ffd27a" stop-opacity=".95"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>`;
+  const bokeh = (n, y0, y1, op) => Array.from({ length: n }, (_, i) => { const x = (i * 97 + hue * 3) % 400, y = y0 + ((i * 53) % (y1 - y0)), r = 6 + (i * 7) % 16; return `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffcf7d" opacity="${(op * ((i % 3) + 1) / 3).toFixed(2)}"/>`; }).join("");
+  const label = { kitchen: "Chef cooking with a flaming pan", table: "Friends at a candlelit dinner", popup: "Pop-up food stall under string lights", plate: "Plated dish on a wooden table" }[kind];
+  const open = `<svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${label}">`;
+  if (kind === "kitchen") return `${open}<defs>
+    <radialGradient id="${k}bg" cx="50%" cy="15%" r="95%"><stop offset="0" stop-color="${h(28)},70%,46%)"/><stop offset=".55" stop-color="${h(12)},50%,19%)"/><stop offset="1" stop-color="${h(0)},40%,9%)"/></radialGradient>${glow}
+    <linearGradient id="${k}fl" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff5a00"/><stop offset=".55" stop-color="#ffae00"/><stop offset="1" stop-color="#fff3b0"/></linearGradient>
+    <filter id="${k}bl"><feGaussianBlur stdDeviation="6"/></filter></defs>
+    <rect width="400" height="260" fill="url(#${k}bg)"/>${bokeh(9, 20, 150, .3)}
+    <g opacity=".14" stroke="#fff">${Array.from({ length: 9 }, (_, i) => `<line x1="${i * 50}" y1="60" x2="${i * 50}" y2="196"/>`).join("")}<line x1="0" y1="110" x2="400" y2="110"/><line x1="0" y1="155" x2="400" y2="155"/></g>
+    <circle cx="80" cy="52" r="70" fill="url(#${k}gl)" opacity=".55"/><circle cx="330" cy="52" r="70" fill="url(#${k}gl)" opacity=".55"/>
+    <path d="M80 0v34M330 0v34" stroke="#120b06" stroke-width="2"/><path d="M60 46h40l-7-14H67Z M310 46h40l-7-14h-26Z" fill="#2a1b10"/>
+    <path d="M140 260c0-60 24-94 66-94s66 34 66 94Z" fill="#f6f0e8"/><path d="M206 172v88" stroke="#ddd3c6" stroke-width="2"/><circle cx="196" cy="190" r="3" fill="#c9bcad"/><circle cx="196" cy="210" r="3" fill="#c9bcad"/>
+    <circle cx="206" cy="138" r="23" fill="${h(10)},40%,48%)"/><path d="M196 146q10 7 20 0" stroke="#3b2414" stroke-width="2" fill="none" opacity=".6"/>
+    <rect x="186" y="100" width="40" height="20" rx="4" fill="#fff"/><circle cx="192" cy="97" r="12" fill="#fff"/><circle cx="206" cy="90" r="14" fill="#fff"/><circle cx="220" cy="97" r="12" fill="#fff"/>
+    <path d="M248 204c18 2 30-2 40-14" stroke="#f6f0e8" stroke-width="17" stroke-linecap="round" fill="none"/>
+    <rect y="200" width="400" height="60" fill="${h(18)},35%,20%)"/><rect y="196" width="400" height="7" fill="${h(25)},42%,34%)"/>
+    <ellipse cx="300" cy="170" rx="46" ry="34" fill="#ff8a00" filter="url(#${k}bl)" opacity=".75"/>
+    <path d="M272 190c2-22 14-18 12-36 9 12 16-6 14-20 13 18 16 10 20 0 6 20 14 30 6 56Z" fill="url(#${k}fl)"/>
+    <path d="M282 190c3-14 9-10 9-22 6 8 10-2 10-12 7 12 9 20 6 34Z" fill="#fff6c8" opacity=".9"/>
+    <ellipse cx="302" cy="192" rx="40" ry="9" fill="#1b1714"/><path d="M262 190l-30 6" stroke="#2a2420" stroke-width="7" stroke-linecap="round"/>
+    <path d="M110 186c-6-14 6-18 0-30M126 186c-6-14 6-18 0-30" stroke="#fff" stroke-width="2.5" fill="none" opacity=".35"/>
+    <ellipse cx="118" cy="194" rx="28" ry="6" fill="#f3ece3"/><path d="M98 192c6-10 34-10 40 0" fill="${h(20)},70%,40%)"/><circle cx="110" cy="188" r="3" fill="#6aa84f"/><circle cx="124" cy="187" r="3" fill="#6aa84f"/></svg>`;
+  if (kind === "table") return `${open}<defs>
+    <linearGradient id="${k}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${h(0)},45%,12%)"/><stop offset="1" stop-color="${h(18)},55%,24%)"/></linearGradient>${glow}
+    <linearGradient id="${k}wd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${h(20)},45%,34%)"/><stop offset="1" stop-color="${h(15)},45%,20%)"/></linearGradient></defs>
+    <rect width="400" height="260" fill="url(#${k}bg)"/>${bokeh(10, 60, 140, .25)}
+    <path d="M0 26Q100 70 200 32T400 26" stroke="#1a110a" stroke-width="1.5" fill="none"/>
+    ${[20, 60, 100, 140, 180, 220, 260, 300, 340, 380].map((x, i) => { const y = 34 + Math.sin(i * .9) * 10; return `<circle cx="${x}" cy="${y}" r="16" fill="url(#${k}gl)"/><circle cx="${x}" cy="${y}" r="3.5" fill="#fff1c4"/>`; }).join("")}
+    ${[[70, 300, 1], [150, 200, 0], [250, 120, 0], [330, 350, 1]].map(([x, c, arm], i) => `<path d="M${x - 36} 200c0-34 14-52 36-52s36 18 36 52Z" fill="hsl(${(c + hue) % 360},35%,${38 + i * 4}%)"/><circle cx="${x}" cy="${128 - (i % 2) * 6}" r="18" fill="hsl(${20 + i * 6},${35 + i * 5}%,${38 + i * 8}%)"/><path d="M${x - 7} ${134 - (i % 2) * 6}q7 6 14 0" stroke="#2b1a10" stroke-width="2" fill="none" opacity=".55"/>${arm ? `<path d="M${x + 22} 170q16-26 12-48" stroke="hsl(${(c + hue) % 360},35%,${38 + i * 4}%)" stroke-width="12" stroke-linecap="round" fill="none"/><path d="M${x + 27} 104h14l-3 12a4 4 0 0 1-8 0Z" fill="#fff" opacity=".85"/><path d="M${x + 31} 109h7l-1 6a3 3 0 0 1-5 0Z" fill="#9b1d32"/>` : ""}`).join("")}
+    <rect y="186" width="400" height="74" fill="url(#${k}wd)"/><rect y="186" width="400" height="5" fill="${h(25)},40%,42%)"/>
+    ${[70, 150, 250, 330].map(x => `<ellipse cx="${x}" cy="214" rx="30" ry="9" fill="#f6efe6"/><ellipse cx="${x}" cy="212" rx="14" ry="4" fill="${h(15)},65%,42%)"/><circle cx="${x - 5}" cy="210" r="2.2" fill="#78b05a"/>`).join("")}
+    ${[110, 200, 290].map(x => `<circle cx="${x}" cy="176" r="34" fill="url(#${k}gl)" opacity=".8"/><rect x="${x - 4}" y="176" width="8" height="22" rx="2" fill="#f7efe1"/><path d="M${x} 162c4 5 4 9 0 13-4-4-4-8 0-13Z" fill="#ffc94a"/>`).join("")}
+    ${[40, 185, 360].map(x => `<path d="M${x - 8} 178h16l-2 12a6 6 0 0 1-12 0Z" fill="#fff" opacity=".7"/><path d="M${x - 6} 184h12l-1 6a5 5 0 0 1-10 0Z" fill="#8f1b2e"/><path d="M${x} 196v10M${x - 6} 207h12" stroke="#fff" stroke-width="1.6" opacity=".7"/>`).join("")}</svg>`;
+  if (kind === "popup") return `${open}<defs>
+    <linearGradient id="${k}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${h(230)},40%,16%)"/><stop offset=".7" stop-color="${h(10)},55%,32%)"/><stop offset="1" stop-color="${h(25)},70%,46%)"/></linearGradient>${glow}
+    <filter id="${k}bl"><feGaussianBlur stdDeviation="5"/></filter></defs>
+    <rect width="400" height="260" fill="url(#${k}bg)"/>${bokeh(7, 20, 90, .2)}
+    <path d="M0 18Q200 120 400 18" stroke="#120c08" stroke-width="1.5" fill="none"/>${Array.from({ length: 11 }, (_, i) => { const x = i * 40, t = x / 400, y = (1 - t) * (1 - t) * 18 + 2 * (1 - t) * t * 120 + t * t * 18; return `<circle cx="${x}" cy="${y + 6}" r="14" fill="url(#${k}gl)"/><circle cx="${x}" cy="${y + 6}" r="3" fill="#fff3c9"/>`; }).join("")}
+    <rect x="90" y="116" width="220" height="110" fill="${h(15)},30%,18%)"/>
+    ${Array.from({ length: 11 }, (_, i) => `<rect x="${84 + i * 21.2}" y="92" width="21.2" height="28" fill="${i % 2 ? "#fbf3e7" : `${h(0)},70%,48%)`}"/><circle cx="${94.6 + i * 21.2}" cy="120" r="10.6" fill="${i % 2 ? "#fbf3e7" : `${h(0)},70%,48%)`}"/>`).join("")}
+    <circle cx="200" cy="160" r="60" fill="url(#${k}gl)" opacity=".5"/>
+    <path d="M168 226c0-36 14-54 32-54s32 18 32 54Z" fill="#f6f0e8"/><circle cx="200" cy="152" r="16" fill="${h(10)},40%,46%)"/><rect x="186" y="128" width="28" height="12" rx="3" fill="#fff"/><circle cx="192" cy="128" r="8" fill="#fff"/><circle cx="208" cy="128" r="8" fill="#fff"/>
+    <rect x="80" y="196" width="240" height="64" fill="${h(20)},40%,28%)"/><rect x="80" y="192" width="240" height="7" fill="${h(25)},45%,40%)"/>
+    <rect x="150" y="210" width="100" height="26" rx="4" fill="#1b130d"/><text x="200" y="228" text-anchor="middle" font-family="-apple-system,Inter,sans-serif" font-weight="800" font-size="13" fill="#ffd27a" letter-spacing="2">OPEN</text>
+    <path d="M130 186c-8-16 6-20-2-36M270 186c-8-16 6-20-2-36" stroke="#fff" stroke-width="3" fill="none" opacity=".25" filter="url(#${k}bl)"/>
+    ${[[30, 0], [345, 1], [380, 2]].map(([x, i]) => `<path d="M${x - 24} 260c0-36 10-58 24-58s24 22 24 58Z" fill="${h(200 + i * 40)},25%,${14 + i * 3}%)"/><circle cx="${x}" cy="${188 - i * 4}" r="14" fill="${h(200 + i * 40)},20%,${12 + i * 3}%)"/>`).join("")}</svg>`;
+  return `${open}<defs>
+    <linearGradient id="${k}bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${h(20)},40%,30%)"/><stop offset="1" stop-color="${h(10)},45%,16%)"/></linearGradient>${glow}
+    <radialGradient id="${k}pl" cx="45%" cy="40%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e9e1d6"/></radialGradient></defs>
+    <rect width="400" height="260" fill="url(#${k}bg)"/>
+    <g stroke="#000" opacity=".12">${Array.from({ length: 8 }, (_, i) => `<path d="M0 ${20 + i * 34}q200 ${i % 2 ? 10 : -10} 400 0" fill="none"/>`).join("")}</g>
+    <circle cx="350" cy="40" r="80" fill="url(#${k}gl)" opacity=".55"/>
+    <ellipse cx="200" cy="138" rx="104" ry="100" fill="#000" opacity=".25"/><circle cx="200" cy="130" r="100" fill="url(#${k}pl)"/><circle cx="200" cy="130" r="74" fill="none" stroke="#ddd2c4" stroke-width="1.2"/>
+    <path d="M150 160c20-40 70-58 104-30" stroke="${h(0)},60%,38%)" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <ellipse cx="205" cy="128" rx="34" ry="22" fill="${h(15)},55%,30%)"/><ellipse cx="200" cy="122" rx="26" ry="13" fill="${h(20)},60%,40%)" opacity=".8"/>
+    <ellipse cx="236" cy="150" rx="15" ry="11" fill="#f2c14e"/><ellipse cx="170" cy="118" rx="14" ry="10" fill="#e8a33d"/>
+    ${[[188, 104], [214, 102], [228, 118], [176, 140], [196, 150], [244, 132]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="3" transform="rotate(${i * 40} ${x} ${y})" fill="${i % 2 ? "#5d9b45" : "#7fbf5a"}"/>`).join("")}
+    ${[[160, 92], [240, 172], [258, 104], [150, 176]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${h(0)},60%,38%)"/>`).join("")}
+    <rect x="66" y="40" width="10" height="180" rx="5" fill="#d9d2c8"/><path d="M332 40v60M324 40v40a8 8 0 0 0 16 0V40" stroke="#d9d2c8" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="327" y="100" width="10" height="120" rx="5" fill="#d9d2c8"/>
+    <circle cx="352" cy="214" r="28" fill="#fff" opacity=".18"/><circle cx="352" cy="214" r="20" fill="#7d1528" opacity=".8"/></svg>`;
 }
-const KEY = "chef-on-call-v1";
-let S;
+
+/* ---------- sample data ---------- */
+function seed() {
+  return {
+    brand: { ...BRAND }, favs: [], usedWelcome: false,
+    promos: { lastMinute: true, welcome: true, repeat: true, group: false, code: "SPRING10" },
+    chefs: [
+      { id: "you", you: true, name: "Your Name", area: "Your city", cuisine: "Modern Mediterranean", hue: 22, scenes: ["kitchen", "plate", "table"], rating: 4.9, count: 37, tonight: true, years: 9,
+        bio: "Ex-restaurant chef cooking intimate dinners, pop-ups and market food. Seasonal produce, big flavours, zero stress for the host.",
+        badges: ["Food hygiene certified", "Insured", "Allergen trained", "ID verified"],
+        menus: [
+          { id: "m1", name: "Signature 3-course", price: 85, min: 4, courses: ["Burrata, heritage tomato, basil oil", "Slow-braised lamb shoulder, smoked aubergine", "Olive oil cake, poached figs"] },
+          { id: "m2", name: "Sharing feast", price: 65, min: 6, courses: ["Mezze table & warm flatbreads", "Charred chicken, herb rice, pickles", "Baklava & mint tea"] },
+          { id: "m3", name: "Tasting menu · 6 courses", price: 140, min: 2, courses: ["Snacks", "Crudo", "Hand-made pasta", "Fish", "Meat", "Dessert"] } ] },
+      { id: "c2", name: "Amara Okafor", area: "Downtown", cuisine: "West African feasts", hue: 8, scenes: ["table", "kitchen", "plate"], rating: 4.8, count: 52, tonight: false, years: 7,
+        bio: "Jollof, suya and smoke. Family-style feasts for celebrations.", badges: ["Food hygiene certified", "Insured", "ID verified"],
+        menus: [ { id: "a1", name: "Celebration feast", price: 70, min: 8, courses: ["Suya skewers", "Party jollof, plantain, slaw", "Puff-puff, salted caramel"] } ] },
+      { id: "c3", name: "Kenji Mori", area: "Riverside", cuisine: "Omakase at home", hue: 205, scenes: ["plate", "kitchen", "table"], rating: 5.0, count: 21, tonight: true, years: 12,
+        bio: "Counter-style omakase at your table, 4–12 guests.", badges: ["Food hygiene certified", "Insured", "Allergen trained", "ID verified"],
+        menus: [ { id: "k1", name: "Omakase · 10 pieces + 3 plates", price: 160, min: 2, courses: ["Chawanmushi", "10-piece nigiri", "Wagyu tataki", "Yuzu sorbet"] } ] },
+      { id: "c4", name: "Lucía Reyes", area: "Old Town", cuisine: "Paella & tapas", hue: 35, scenes: ["popup", "table", "plate"], rating: 4.7, count: 64, tonight: true, years: 6,
+        bio: "Giant paella cooked live in your garden. Great for 10–40.", badges: ["Food hygiene certified", "Insured"],
+        menus: [ { id: "l1", name: "Paella party", price: 48, min: 10, courses: ["Tapas: croquetas, pan con tomate", "Seafood or veggie paella, cooked live", "Crema catalana"] } ] },
+    ],
+    popups: [
+      { id: "p1", chefId: "you", title: "Weekend market stall", place: "Central farmers' market", date: day(5), time: "10:00–15:00",
+        items: [ { name: "Lamb flatbread", price: 13 }, { name: "Halloumi & hot honey wrap", price: 11 }, { name: "Olive oil cake", price: 5 } ], sold: { 0: 38, 1: 21, 2: 30 } },
+      { id: "p2", chefId: "c3", title: "Ramen night pop-up", place: "The Yard, Riverside", date: day(9), time: "18:00–22:00",
+        items: [ { name: "Tonkotsu ramen", price: 17 }, { name: "Karaage", price: 8 } ], sold: { 0: 41, 1: 25 } },
+    ],
+    bookings: [
+      { id: uid(), chefId: "you", menuId: "m1", date: day(2), time: "19:30", guests: 8, client: "Priya S. (sample)", allergies: "1 guest: tree nuts (severe)", diet: "2 vegetarian",
+        kitchen: { oven: true, hob: "Induction", plates: true, parking: false }, notes: "Surprise birthday. Arrive by 17:00 via the side gate.", status: "new", created: Date.now() - 36e5, discount: 0 },
+      { id: uid(), chefId: "you", menuId: "m2", date: day(4), time: "13:00", guests: 14, client: "Dan & Co (sample)", allergies: "", diet: "1 gluten-free",
+        kitchen: { oven: true, hob: "Gas", plates: false, parking: true }, notes: "Team lunch in the office kitchen.", status: "accepted", created: Date.now() - 864e5 * 2, discount: 0 },
+      { id: uid(), chefId: "you", menuId: "m3", date: day(-6), time: "20:00", guests: 4, client: "Olivia R. (sample)", allergies: "", diet: "",
+        kitchen: { oven: true, hob: "Gas", plates: true, parking: true }, notes: "", status: "accepted", created: Date.now() - 864e5 * 12, discount: 0 },
+    ],
+    preorders: [], gifts: [],
+    allergens: { "Burrata, heritage tomato, basil oil": ["Milk"], "Slow-braised lamb shoulder, smoked aubergine": ["Celery", "Sulphites"], "Olive oil cake, poached figs": ["Gluten", "Eggs"] },
+  };
+}
+const KEY = "chef-on-call-v2", PKEY = "chef-on-call-photos";
+let S, PHOTOS = [];
 try { S = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch (_) { S = seed(); }
+try { PHOTOS = JSON.parse(localStorage.getItem(PKEY)) || []; } catch (_) { PHOTOS = []; }
 S.brand = { ...BRAND, ...(S.brand || {}) };
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (_) {} };
+const savePhotos = () => { try { localStorage.setItem(PKEY, JSON.stringify(PHOTOS)); return true; } catch (_) { return false; } };
 
 /* ---------- money ---------- */
 const money = v => S.brand.currency + Math.round(v).toLocaleString();
 const chefById = id => S.chefs.find(c => c.id === id);
-const menuOf = b => (chefById(b.chefId)?.menus || []).find(m => m.id === b.menuId);
-function quote(menu, guests) {
-  const sub = menu.price * guests;
-  const fee = sub * S.brand.feePct / 100;
-  const total = sub + fee;
-  const deposit = total * S.brand.depositPct / 100;
-  return { sub, fee, total, deposit, chefGets: sub, rivalGets: sub * (1 - S.brand.rivalCommission / 100) };
+const menuOf = b => (chefById(b.chefId)?.menus || []).find(m => m.id === b.menuId) || { name: "Menu", price: 0, courses: [] };
+const fromPrice = c => Math.min(...c.menus.map(m => m.price));
+function quote(menu, guests, discount = 0) {
+  const sub = menu.price * guests, fee = sub * S.brand.feePct / 100, total = Math.max(0, sub + fee - discount);
+  return { sub, fee, discount, total, deposit: total * S.brand.depositPct / 100, chefGets: sub, rivalGets: sub * (1 - S.brand.rivalCommission / 100) };
 }
 
-/* ---------- icons ---------- */
-const I = {
-  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
-  tent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20 12 4l9 16H3Z"/><path d="M12 20v-6"/></svg>',
-  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
-  inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6l2-8Z"/></svg>',
-  coin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5M12 6v2M12 16v2"/></svg>',
-  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 0 2 2h13"/></svg>',
-  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
-  bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3Z"/></svg>',
-  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
-  road: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 21 9 3M19 21 15 3M12 5v2M12 11v2M12 17v2"/></svg>',
-};
-const TABS = {
-  client: [["find", "Find a chef", I.search], ["popups", "Pop-ups", I.tent], ["mine", "My bookings", I.cal]],
-  chef: [["requests", "Requests", I.inbox], ["earnings", "Earnings", I.coin], ["menus", "Menus", I.book], ["profile", "Profile", I.user]],
-  plan: [["why", "The problem", I.bulb], ["model", "Business", I.chart], ["roadmap", "Roadmap", I.road]],
-};
-
-/* ---------- navigation ---------- */
-let V = { side: "client", tab: "find", stack: [] }; // stack holds detail screens
+/* ---------- UI helpers ---------- */
 const app = document.getElementById("app");
-function go(screen) { V.stack.push(screen); render(); }
+let V = { role: "guest", tab: "discover", stack: [] };
+let filter = { cat: "All", guests: 6, date: "" };
+const toast = t => { document.querySelectorAll(".toast").forEach(x => x.remove()); const d = document.createElement("div"); d.className = "toast"; d.setAttribute("role", "status"); d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2200); };
+function armed(btn, label, fn) { if (!btn) return; btn.onclick = e => { e.stopPropagation(); if (btn.dataset.a) return fn(); const o = btn.innerHTML; btn.dataset.a = 1; btn.textContent = label; setTimeout(() => { delete btn.dataset.a; btn.innerHTML = o; }, 3000); }; }
+function copy(text, ok = "Copied") { try { navigator.clipboard.writeText(text).then(() => toast(ok), () => toast("Copy blocked here. Select the text instead")); } catch (_) { toast("Copy blocked here. Select the text instead"); } }
+const initials = n => n.split(/\s+/).map(w => w[0] || "").join("").slice(0, 2).toUpperCase();
+
+function slidesFor(c) { return [...(c.you ? PHOTOS.map(src => ({ img: src })) : []), ...c.scenes.map(s => ({ scene: s, hue: c.hue }))]; }
+function slider(slides, cls = "", extra = "", style = "") {
+  return `<div class="slider ${cls}" style="${style}">${extra}<div class="slides">${slides.map(s => `<div class="slide">${s.img ? `<img src="${s.img}" alt="Chef's food photo">` : scene(s.scene, s.hue)}${s.copy || ""}</div>`).join("")}</div>
+    ${slides.length > 1 ? `<div class="dots">${slides.map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}</div>`;
+}
+let heroTimer;
+function wireSliders(root = app) {
+  root.querySelectorAll(".slider").forEach(sl => {
+    const track = sl.querySelector(".slides"), dots = sl.querySelectorAll(".dots i");
+    if (track) track.addEventListener("scroll", () => { const i = Math.round(track.scrollLeft / track.clientWidth); dots.forEach((d, j) => d.classList.toggle("on", i === j)); }, { passive: true });
+  });
+  clearInterval(heroTimer);
+  const hero = root.querySelector(".hero .slides");
+  if (hero && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    let touched = false; hero.addEventListener("pointerdown", () => touched = true);
+    heroTimer = setInterval(() => { if (touched || !document.body.contains(hero)) return; const n = hero.children.length, i = Math.round(hero.scrollLeft / hero.clientWidth); hero.scrollTo({ left: ((i + 1) % n) * hero.clientWidth, behavior: "smooth" }); }, 4500);
+  }
+}
+
+function openSheet(title, html, mount) {
+  const w = document.createElement("div"); w.className = "sheet-wrap";
+  w.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grabber"></div><div class="sheet-head"><h3>${esc(title)}</h3><button class="close" aria-label="Close">${I.x}</button></div><div class="stack" id="sb">${html}</div></div>`;
+  const onKey = e => { if (e.key === "Escape") close(); };
+  const close = () => { w.remove(); document.removeEventListener("keydown", onKey); };
+  w.addEventListener("click", e => { if (e.target === w) close(); });
+  w.querySelector(".close").onclick = close;
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(w);
+  const api = { body: w.querySelector("#sb"), close, root: w, title: t => w.querySelector("h3").textContent = t };
+  mount && mount(api);
+  wireSliders(w);
+  return api;
+}
+
+const TABS = {
+  guest: [["discover", "Discover", I.compass], ["popups", "Pop-ups", I.tent], ["dinners", "My dinners", I.cal], ["saved", "Saved", I.heart]],
+  chef: [["bookings", "Bookings", I.tray], ["tools", "Tools", I.wrench], ["extras", "Extras", I.grid]],
+};
+function go(page) { V.stack.push(page); render(); }
 function back() { V.stack.pop(); render(); }
-function toast(t) { const d = document.createElement("div"); d.className = "toast"; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
-function armed(btn, label, fn) { btn.onclick = () => { if (btn.dataset.a) return fn(); const o = btn.textContent; btn.dataset.a = 1; btn.textContent = label; setTimeout(() => { delete btn.dataset.a; btn.textContent = o; }, 3000); }; }
 
 function render() {
-  const b = S.brand;
-  document.getElementById("brand").textContent = b.name;
-  document.getElementById("mark").textContent = (b.name || "C")[0].toUpperCase();
-  document.title = b.name;
-  document.querySelectorAll("[data-side]").forEach(x => x.classList.toggle("on", x.dataset.side === V.side));
-  const newCount = S.bookings.filter(x => x.chefId === "you" && x.status === "new").length;
-  document.getElementById("tabs").innerHTML = TABS[V.side].map(([k, l, ic]) =>
-    `<button data-tab="${k}" class="${k === V.tab ? "on" : ""}">${ic}<span>${l}${k === "requests" && newCount ? `<span class="badge-dot">${newCount}</span>` : ""}</span></button>`).join("");
-  document.querySelectorAll("[data-tab]").forEach(x => x.onclick = () => { V.tab = x.dataset.tab; V.stack = []; render(); });
+  document.title = S.brand.name;
   const top = V.stack[V.stack.length - 1];
-  if (top) SCREENS[top.s](top);
-  else SCREENS[V.tab]();
+  const nav = document.getElementById("nav");
+  nav.innerHTML = `${top ? `<button class="back" id="bk">${I.back}${esc(top.title)}</button>` : `<b style="font-size:17px">${esc(S.brand.name)}</b>`}
+    <div class="seg" role="group" aria-label="Switch app"><button data-role="guest" class="${V.role === "guest" ? "on" : ""}">Guest</button><button data-role="chef" class="${V.role === "chef" ? "on" : ""}">Chef</button></div>`;
+  if (top) nav.querySelector("#bk").onclick = back;
+  nav.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { if (V.role === b.dataset.role) return; V.role = b.dataset.role; V.tab = TABS[V.role][0][0]; V.stack = []; render(); });
+  const reqs = S.bookings.filter(b => b.chefId === "you" && b.status === "new").length;
+  document.getElementById("tabbar").innerHTML = TABS[V.role].map(([k, l, ic]) => `<button data-tab="${k}" class="${k === V.tab ? "on" : ""}" aria-current="${k === V.tab ? "page" : "false"}">${ic}<span>${l}</span>${k === "bookings" && reqs ? `<span class="badge">${reqs}</span>` : ""}</button>`).join("");
+  document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { V.tab = b.dataset.tab; V.stack = []; render(); });
+  (top ? PAGES[top.p] : PAGES[V.tab])(top || {});
+  wireSliders();
   window.scrollTo(0, 0);
 }
-document.querySelectorAll("[data-side]").forEach(x => x.onclick = () => { V.side = x.dataset.side; V.tab = TABS[V.side][0][0]; V.stack = []; render(); });
+const PAGES = {};
 
-/* ================= CLIENT SIDE ================= */
-let filter = { occasion: "Any", tonight: false };
-const OCCASIONS = ["Any", "Dinner party", "Birthday", "Date night", "Big group 10+", "Office lunch"];
-function chefCard(c) {
-  const from = Math.min(...c.menus.map(m => m.price));
-  return `<button class="chef" data-chef="${c.id}">
-    <div class="avatar" style="background:${c.color}">${esc(c.name.split(" ").map(w => w[0]).join("").slice(0, 2))}</div>
-    <div class="grow stack" style="gap:4px">
-      <div class="row"><b class="grow">${esc(c.name)}${c.you ? ' <span class="sample">you</span>' : ' <span class="sample">sample</span>'}</b><span class="sm"><span class="star">★</span> ${c.rating} <span class="muted">(${c.count})</span></span></div>
-      <div class="sm muted">${esc(c.cuisine)} · ${esc(c.area)}</div>
-      <div class="chips">${c.tonight ? '<span class="chip accent">Free tonight</span>' : ""}${c.badges.includes("Insured") ? '<span class="chip good">✓ Insured</span>' : ""}${c.badges.includes("Allergen trained") ? '<span class="chip good">✓ Allergen trained</span>' : ""}</div>
-      <div class="sm">From <span class="price">${money(from)}</span> <span class="muted">/ guest · groceries included</span></div>
-    </div></button>`;
+/* =========================== GUEST =========================== */
+const CATS = [["All", I.compass], ["Dinner party", I.candle], ["Date night", I.heart], ["Birthday", I.cake], ["Brunch", I.sun], ["Big groups", I.people], ["Team events", I.briefcase]];
+function chefMatches(c) {
+  if (filter.cat === "Date night") return c.menus.some(m => m.min <= 2);
+  if (filter.cat === "Big groups" || filter.cat === "Team events") return c.menus.some(m => m.min >= 6);
+  return true;
 }
-const SCREENS = {};
-SCREENS.find = () => {
-  let list = S.chefs.filter(c => !filter.tonight || c.tonight);
-  if (filter.occasion === "Big group 10+") list = list.filter(c => c.menus.some(m => m.min >= 6));
+function chefCard(c) {
+  const fav = S.favs.includes(c.id);
+  const tag = c.tonight && c.you && S.promos.lastMinute ? `<span class="tag deal">Tonight · 15% off</span>` : c.tonight ? `<span class="tag">Free tonight</span>` : "";
+  return `<div class="chef-card" data-chef="${c.id}" role="link" tabindex="0" aria-label="${esc(c.name)}, ${esc(c.cuisine)}">
+    ${slider(slidesFor(c), "", `<button class="heart ${fav ? "on" : ""}" data-fav="${c.id}" aria-label="${fav ? "Remove from saved" : "Save"}">${fav ? I.heartF : I.heart}</button>${tag}`)}
+    <div class="meta"><div class="top"><b>${esc(c.name)}</b><span class="star">${I.star} ${c.rating.toFixed(1)}</span></div>
+      <span class="muted fn">${esc(c.cuisine)} · ${esc(c.area)}${c.you ? "" : " · sample"}</span>
+      <span class="fn"><b>${money(fromPrice(c))}</b> per guest · groceries included</span></div></div>`;
+}
+function wireChefCards(root = app) {
+  root.querySelectorAll("[data-fav]").forEach(b => b.onclick = e => { e.stopPropagation(); const id = b.dataset.fav; S.favs = S.favs.includes(id) ? S.favs.filter(x => x !== id) : [...S.favs, id]; save(); toast(S.favs.includes(id) ? "Saved" : "Removed from saved"); render(); });
+  root.querySelectorAll("[data-chef]").forEach(c => { const open = () => go({ p: "chef", id: c.dataset.chef, title: TABS[V.role].find(t => t[0] === V.tab)[1] }); c.onclick = open; c.onkeydown = e => { if (e.key === "Enter") open(); }; });
+}
+
+PAGES.discover = () => {
+  const chefs = S.chefs.filter(chefMatches);
+  const tonight = S.chefs.filter(c => c.tonight);
+  const heroSlides = [
+    { scene: "table", hue: 22, copy: `<div class="shade"></div><div class="copy"><b>Candlelit dinners, at home</b><span>Private chefs from ${money(48)} per guest, groceries included</span><button class="btn sm" data-jump="list">Find a chef</button></div>` },
+    { scene: "kitchen", hue: 15, copy: `<div class="shade"></div><div class="copy"><b>A chef cooks live in your kitchen</b><span>Omakase, paella, tasting menus and more</span><button class="btn sm" data-jump="list">Explore chefs</button></div>` },
+    { scene: "popup", hue: 20, copy: `<div class="shade"></div><div class="copy"><b>Pop-ups & market stalls this week</b><span>Pre-order and skip the queue</span><button class="btn sm" data-jump="popups">See pop-ups</button></div>` },
+    { scene: "plate", hue: 25, copy: `<div class="shade"></div><div class="copy"><b>Your first dinner: ${money(S.brand.welcome)} off</b><span>Use code WELCOME${S.brand.welcome} at checkout</span><button class="btn sm" data-jump="welcome">Copy code</button></div>` },
+  ];
+  if (PHOTOS[0]) heroSlides.unshift({ img: PHOTOS[0], copy: `<div class="shade"></div><div class="copy"><b>Tonight with ${esc(chefById("you").name)}</b><span>${esc(chefById("you").cuisine)} · book before 3pm</span><button class="btn sm" data-jump="you">Book now</button></div>` });
   app.innerHTML = `
-  <section class="hero">
-    <span class="eyebrow" style="color:var(--head-muted)">Private chefs near you</span>
-    <h1>A restaurant night, at your table.</h1>
-    <p>Fixed prices with groceries included. Book in 3 minutes. Allergies handled before the chef arrives.</p>
-    <div class="scroll-x">${OCCASIONS.map(o => `<button class="chip ${filter.occasion === o ? "on" : ""}" data-occ="${esc(o)}">${esc(o)}</button>`).join("")}</div>
-    <label class="tick" style="color:var(--head-ink);border:0;padding:0"><input type="checkbox" id="tonight" ${filter.tonight ? "checked" : ""}> Free tonight only</label>
-  </section>
-  <div class="row"><h2 class="grow" style="font-size:20px">${list.length} chefs available</h2><span class="xs muted">Sample listings</span></div>
-  <div class="stack">${list.map(chefCard).join("") || '<div class="empty">No chefs match. Try another filter.</div>'}</div>
-  <div class="card stack"><span class="eyebrow">How it works</span>
-    <div class="sm"><b>1. Pick a menu.</b> The price you see is the price you pay, groceries included.</div>
-    <div class="sm"><b>2. Tell us about your kitchen and allergies.</b> The chef arrives prepared, with no back-and-forth.</div>
-    <div class="sm"><b>3. Pay a ${S.brand.depositPct}% deposit.</b> The rest is due after a great night. Clear cancellation rules.</div>
-  </div>`;
-  app.querySelectorAll("[data-occ]").forEach(b => b.onclick = () => { filter.occasion = b.dataset.occ; render(); });
-  app.querySelector("#tonight").onchange = e => { filter.tonight = e.target.checked; render(); };
-  app.querySelectorAll("[data-chef]").forEach(b => b.onclick = () => go({ s: "chef", id: b.dataset.chef }));
+    <div><h1 class="large">${greet}</h1><div class="subtitle">Let a chef cook for you.</div></div>
+    <button class="search" id="search"><span class="grow"><b>Where & when?</b><span class="s">${filter.date ? fmtDate(filter.date) : "Any date"} · ${filter.guests} guests · ${filter.cat === "All" ? "Any occasion" : esc(filter.cat)}</span></span><span class="go">${I.search}</span></button>
+    ${slider(heroSlides, "hero")}
+    <div class="hscroll" aria-label="Occasions">${CATS.map(([c, ic]) => `<button class="cat ${filter.cat === c ? "on" : ""}" data-cat="${esc(c)}" aria-pressed="${filter.cat === c}"><span class="bub">${ic}</span>${esc(c)}</button>`).join("")}</div>
+    ${S.promos.welcome && !S.usedWelcome ? `<button class="banner" id="welcome"><span class="icon-sq" style="background:var(--accent);width:44px;height:44px;border-radius:12px">${I.gift}</span><span class="grow"><b style="display:block;font-size:15px">New here? ${money(S.brand.welcome)} off your first dinner</b><span class="fn muted">Tap to copy the code</span></span><span class="code">WELCOME${S.brand.welcome}</span></button>` : ""}
+    ${tonight.length ? `<section><div class="sec-head"><h2 class="sec">Free tonight</h2><span class="muted fn">Last-minute deals</span></div>
+      <div class="hscroll">${tonight.map(c => { const deal = c.you && S.promos.lastMinute; return `<div class="mini" data-chef="${c.id}" role="link" tabindex="0" aria-label="${esc(c.name)}">${slider([c.you && PHOTOS[0] ? { img: PHOTOS[0] } : { scene: c.scenes[0], hue: c.hue }], "", deal ? `<span class="tag deal">−15% tonight</span>` : `<span class="tag">Free tonight</span>`)}<div class="meta"><div class="top"><b>${esc(c.name)}</b><span class="star">${I.star} ${c.rating.toFixed(1)}</span></div><span class="fn muted">${esc(c.cuisine)}</span><span class="fn">From <b>${money(fromPrice(c) * (deal ? .85 : 1))}</b> / guest</span></div></div>`; }).join("")}</div></section>` : ""}
+    <section id="list"><div class="sec-head"><h2 class="sec">${filter.cat === "All" ? "Chefs near you" : esc(filter.cat)}</h2><span class="muted fn">${chefs.length} chefs</span></div>
+      <div class="stack" style="gap:26px">${chefs.map(chefCard).join("") || `<div class="muted">No chefs for this filter yet.</div>`}</div></section>
+    <section><div class="sec-head"><h2 class="sec">More ways to enjoy</h2></div>
+      <div class="promo-grid">
+        <button class="promo" data-promo="gift" style="background:linear-gradient(140deg,#e0742c,#a8401c)"><span class="big-ic">${I.gift}</span><b>Gift a dinner</b><span>The present they'll talk about</span></button>
+        <button class="promo" data-promo="refer" style="background:linear-gradient(140deg,#3d6b4f,#21402d)"><span class="big-ic">${I.share}</span><b>Give ${money(25)}, get ${money(25)}</b><span>Invite a friend</span></button>
+        <button class="promo" data-promo="team" style="background:linear-gradient(140deg,#5a4a8a,#2f2650)"><span class="big-ic">${I.briefcase}</span><b>Team dinners</b><span>Offices, retreats, client nights</span></button>
+        <button class="promo" data-promo="season" style="background:linear-gradient(140deg,#8a2f3b,#4d1820)"><span class="big-ic">${I.snow}</span><b>Holiday season</b><span>Book early, dates fill fast</span></button>
+      </div></section>
+    <section><div class="sec-head"><h2 class="sec">Happy hosts</h2><span class="muted fn">Sample reviews</span></div>
+      <div class="hscroll">${[["Maya", "#c2562d", "It felt like a restaurant in our living room. The kitchen was cleaner than before!"], ["Tom", "#3d6b4f", "Two allergies at the table and zero stress. Booking took three minutes."], ["Aisha", "#5a4a8a", "We had a paella party for 25. The neighbours keep asking for the chef's number."]]
+        .map(([n, col, t]) => `<div class="review"><div class="who"><span class="av" style="background:${col}">${n[0]}</span><div><b>${n}</b><div class="stars" aria-label="5 stars">★★★★★</div></div></div><div class="fn">${t}</div></div>`).join("")}</div></section>
+    <section><div class="sec-head"><h2 class="sec">Book with confidence</h2></div>
+      <div class="trust">
+        <div>${I.shield}<b>Vetted chefs</b><span class="fn muted">ID, hygiene certificate and insurance checked</span></div>
+        <div>${I.alert}<b>Allergy-safe</b><span class="fn muted">The chef sees allergies before shopping</span></div>
+        <div>${I.lock}<b>Secure deposit</b><span class="fn muted">Pay ${S.brand.depositPct}% now, the rest after dinner</span></div>
+        <div>${I.refresh}<b>Chef cancels?</b><span class="fn muted">Full refund and priority rebooking</span></div></div></section>
+    <button class="banner" id="join" style="background:var(--card)"><span class="icon-sq" style="background:#2b211a;width:44px;height:44px;border-radius:12px">${I.pan}</span><span class="grow"><b style="display:block;font-size:15px">Are you a chef?</b><span class="fn muted">Keep 100% of your menu price. Join free.</span></span><span style="width:14px;color:var(--sec);display:grid">${I.chev}</span></button>`;
+  wireChefCards();
+  app.querySelector("#search").onclick = searchSheet;
+  app.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => { filter.cat = b.dataset.cat; render(); });
+  app.querySelectorAll("[data-jump]").forEach(b => b.onclick = e => { e.stopPropagation(); const j = b.dataset.jump;
+    if (j === "list") app.querySelector("#list").scrollIntoView({ behavior: "smooth" });
+    else if (j === "popups") { V.tab = "popups"; render(); }
+    else if (j === "welcome") copy("WELCOME" + S.brand.welcome, "Code copied. Use it at checkout");
+    else go({ p: "chef", id: "you", title: "Discover" }); });
+  const w = app.querySelector("#welcome"); if (w) w.onclick = () => copy("WELCOME" + S.brand.welcome, "Code copied. Use it at checkout");
+  app.querySelectorAll("[data-promo]").forEach(b => b.onclick = () => promoSheet(b.dataset.promo));
+  app.querySelector("#join").onclick = () => { V.role = "chef"; V.tab = "bookings"; V.stack = []; render(); };
 };
 
-SCREENS.chef = ({ id }) => {
+function searchSheet() {
+  openSheet("Find your chef", `
+    <div class="list"><div class="cell"><span class="grow">Date</span><input type="date" id="sd" value="${filter.date}" min="${day(0)}" aria-label="Date"></div>
+      <div class="cell"><span class="grow">Guests</span><span class="stepper"><button id="gm" aria-label="Fewer guests">−</button><b class="num" id="gv">${filter.guests}</b><button id="gp" aria-label="More guests">+</button></span></div>
+      <div class="cell"><span class="grow">Occasion</span><select id="so" aria-label="Occasion">${CATS.map(([c]) => `<option ${c === filter.cat ? "selected" : ""}>${c}</option>`).join("")}</select></div></div>
+    <button class="btn block" id="sgo">Show chefs</button>`, api => {
+    const b = api.body; let g = filter.guests;
+    b.querySelector("#gm").onclick = () => { g = Math.max(1, g - 1); b.querySelector("#gv").textContent = g; };
+    b.querySelector("#gp").onclick = () => { g = Math.min(80, g + 1); b.querySelector("#gv").textContent = g; };
+    b.querySelector("#sgo").onclick = () => { filter.guests = g; filter.date = b.querySelector("#sd").value; filter.cat = b.querySelector("#so").value; api.close(); render(); setTimeout(() => app.querySelector("#list")?.scrollIntoView({ behavior: "smooth" }), 60); };
+  });
+}
+
+function promoSheet(kind) {
+  if (kind === "gift") return openSheet("Gift a dinner", `
+    ${slider([{ scene: "table", hue: 15 }], "", "", "height:170px")}
+    <div class="fn muted">A digital gift card for any chef on ${esc(S.brand.name)}. It never expires.</div>
+    <div class="seg full">${[100, 200, 400].map((a, i) => `<button class="${i === 1 ? "on" : ""}" data-a="${a}">${money(a)}</button>`).join("")}</div>
+    <div class="field"><label for="gt">To</label><input id="gt" placeholder="Their name"></div>
+    <div class="field"><label for="gmsg">Message</label><textarea id="gmsg" placeholder="Happy birthday! Dinner's on me."></textarea></div>
+    <button class="btn block" id="buy">Buy gift card (demo)</button>`, api => {
+    let amt = 200; const b = api.body;
+    b.querySelectorAll("[data-a]").forEach(x => x.onclick = () => { amt = +x.dataset.a; b.querySelectorAll("[data-a]").forEach(y => y.classList.toggle("on", y === x)); });
+    b.querySelector("#buy").onclick = () => { const to = b.querySelector("#gt").value, code = "GIFT-" + uid().toUpperCase(); S.gifts.push({ code, amt, to }); save();
+      api.title("Gift card ready");
+      b.innerHTML = `<div class="done"><span class="ok">${I.check}</span><b style="font-size:20px">${money(amt)} gift card</b><span class="muted">Send this code to ${esc(to || "them")}. It works at checkout.</span><span class="code" style="font-size:18px">${code}</span></div><button class="btn block" id="cc">Copy code</button>`;
+      b.querySelector("#cc").onclick = () => copy(code); };
+  });
+  if (kind === "refer") return openSheet("Give " + money(25) + ", get " + money(25), `
+    <div class="note">Your friend gets ${money(25)} off their first dinner. You get ${money(25)} credit when they book.</div>
+    <div class="list"><div class="cell"><span class="grow"><b>Your code</b></span><span class="code">FRIEND25</span></div></div>
+    <button class="btn block" id="rc">Copy invite message</button>`, api => api.body.querySelector("#rc").onclick = () => copy(`I've been booking private chefs on ${S.brand.name}. Get ${money(25)} off your first dinner with code FRIEND25.`, "Invite copied"));
+  if (kind === "team") return openSheet("Team dinners", `
+    ${slider([{ scene: "kitchen", hue: 30 }], "", "", "height:170px")}
+    <div class="fn">Chef-cooked lunches, client dinners and offsite feasts for 10–80 people. One invoice, and dietary needs collected from every guest.</div>
+    <div class="list"><div class="cell"><span class="grow">Groups of 12+</span><span class="val">10% off</span></div><div class="cell"><span class="grow">Monthly team lunch</span><span class="val">Same chef every time</span></div></div>
+    <div class="field"><label for="tc">Company & headcount</label><input id="tc" placeholder="e.g. Acme Ltd, 25 people"></div>
+    <button class="btn block" id="tq">Request a team quote (demo)</button>`, api => api.body.querySelector("#tq").onclick = () => { api.close(); toast("Request sent. We reply within 2 hours"); });
+  return openSheet("Holiday season", `
+    ${slider([{ scene: "table", hue: 355 }], "", "", "height:170px")}
+    <div class="fn">December dates book out early. Reserve now with a ${S.brand.depositPct}% deposit and choose the menu later.</div>
+    <div class="list"><div class="cell"><span class="grow">Festive 4-course</span><span class="val">from ${money(95)}</span></div><div class="cell"><span class="grow">New Year's Eve tasting</span><span class="val">from ${money(160)}</span></div></div>
+    <button class="btn block" id="hs">Browse chefs</button>`, api => api.body.querySelector("#hs").onclick = () => { api.close(); filter.cat = "Dinner party"; V.stack = []; V.tab = "discover"; render(); });
+}
+
+PAGES.chef = ({ id }) => {
   const c = chefById(id);
   const pops = S.popups.filter(p => p.chefId === id);
-  app.innerHTML = `<button class="back" id="bk">‹ Back</button>
-  <div class="card stack">
-    <div class="row"><div class="avatar lg" style="background:${c.color}">${esc(c.name.split(" ").map(w => w[0]).join("").slice(0, 2))}</div>
-      <div class="grow"><h2 style="font-size:24px">${esc(c.name)}</h2><div class="sm muted">${esc(c.cuisine)} · ${esc(c.area)} · ${c.years} yrs</div>
-      <div class="sm"><span class="star">★</span> <b>${c.rating}</b> <span class="muted">· ${c.count} verified dinners</span></div></div></div>
-    <p style="margin:0">${esc(c.bio)}</p>
-    <div class="chips">${c.badges.map(b => `<span class="chip good">✓ ${esc(b)}</span>`).join("")}</div>
-  </div>
-  <h3 style="font-size:18px">Menus</h3>
-  <div class="stack">${c.menus.map(m => `<div class="menu-opt">
-    <div class="row"><b class="grow">${esc(m.name)}</b><span class="price">${money(m.price)}</span></div>
-    <ul class="courses">${m.courses.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
-    <div class="row"><span class="xs muted grow">Per guest, all-in · min ${m.min} guests</span><button class="btn sm" data-book="${m.id}">Book</button></div></div>`).join("")}</div>
-  ${pops.length ? `<h3 style="font-size:18px">Upcoming pop-ups</h3>${pops.map(popCard).join("")}` : ""}
-  ${c.reviews.length ? `<h3 style="font-size:18px">Reviews</h3><div class="card stack">${c.reviews.map(r => `<div><div class="star">${"★".repeat(r.stars)}</div><div>${esc(r.text)}</div><div class="xs muted">${esc(r.who)}</div></div>`).join("")}</div>` : ""}
-  <div class="note">Only guests who booked and paid can leave a review.</div>`;
-  app.querySelector("#bk").onclick = back;
-  app.querySelectorAll("[data-book]").forEach(b => b.onclick = () => go({ s: "book", id, menuId: b.dataset.book, step: 1, d: null }));
-  app.querySelectorAll("[data-pop]").forEach(b => b.onclick = () => go({ s: "pop", id: b.dataset.pop }));
+  const fav = S.favs.includes(c.id);
+  app.innerHTML = `
+    ${slider(slidesFor(c), "hero", `<button class="heart ${fav ? "on" : ""}" data-fav="${c.id}" aria-label="${fav ? "Remove from saved" : "Save"}">${fav ? I.heartF : I.heart}</button>`)}
+    <div class="stack" style="gap:4px"><h1 class="large" style="font-size:30px">${esc(c.name)}</h1>
+      <div class="muted">${esc(c.cuisine)} · ${esc(c.area)} · ${c.years} years cooking</div>
+      <div class="row fn" style="gap:4px"><span class="star">${I.star}</span><b>${c.rating.toFixed(1)}</b><span class="muted">· ${c.count} dinners${c.you ? "" : " · sample chef"}</span></div></div>
+    <div>${esc(c.bio)}</div>
+    <div class="pills">${c.badges.map(b => `<span class="pill good">✓ ${esc(b)}</span>`).join("")}</div>
+    ${c.you && S.promos.repeat ? `<div class="note"><b>Coming back?</b> Returning guests get a free dessert course.</div>` : ""}
+    <section><div class="sec-head"><h2 class="sec">Menus</h2><span class="muted fn">Per guest, all-in</span></div>
+      <div class="stack">${c.menus.map(m => `<div class="list" style="padding:16px;display:grid;gap:8px">
+        <div class="row"><b class="grow" style="font-size:17px">${esc(m.name)}</b><b class="num">${money(m.price)}</b></div>
+        <div class="fn muted">${m.courses.map(esc).join(" · ")}</div>
+        <div class="row"><span class="cap muted grow">Groceries, cooking, serving & clean-up · min ${m.min} guests</span><button class="btn sm" data-book="${m.id}">Book</button></div></div>`).join("")}</div></section>
+    ${pops.length ? `<section><div class="sec-head"><h2 class="sec">Pop-ups</h2></div><div class="stack" style="gap:20px">${pops.map(popCard).join("")}</div></section>` : ""}
+    <section><div class="sec-head"><h2 class="sec">What's included</h2></div>
+      <div class="list">${[["Shopping for fresh ingredients", I.leaf, "#2f8a55"], ["Cooking in your kitchen", I.pan, "#e0742c"], ["Serving at the table", I.candle, "#b8690f"], ["Full kitchen clean-up", I.refresh, "#3b6db3"]].map(([t, ic, col]) => `<div class="cell ic"><span class="icon-sq" style="background:${col}">${ic}</span><span>${t}</span></div>`).join("")}</div></section>`;
+  wireChefCards();
+  app.querySelectorAll("[data-book]").forEach(b => b.onclick = () => bookSheet(c, c.menus.find(m => m.id === b.dataset.book)));
+  app.querySelectorAll("[data-pop]").forEach(b => b.onclick = () => popSheet(b.dataset.pop));
 };
 
-SCREENS.book = (st) => {
-  const c = chefById(st.id), m = c.menus.find(x => x.id === st.menuId);
-  st.d = st.d || { guests: Math.max(m.min, 6), date: day(7), time: "19:30", allergies: "", diet: "", kitchen: { oven: true, hob: "Gas", plates: true, parking: false }, notes: "", client: "", phone: "" };
-  const d = st.d, q = quote(m, d.guests), dAway = daysAway(d.date);
-  const steps = ["When & who", "Kitchen & allergies", "Confirm"];
-  let body = "";
-  if (st.step === 1) body = `
-    <div class="card stack">
-      <div><label>Guests</label><div class="stepper"><button id="minus" aria-label="Fewer guests">−</button><b class="num">${d.guests}</b><button id="plus" aria-label="More guests">+</button><span class="xs muted">min ${m.min}</span></div></div>
-      <div class="grid2"><div><label for="date">Date</label><input type="date" id="date" value="${d.date}" min="${day(1)}"></div><div><label for="time">Dinner time</label><input type="time" id="time" value="${d.time}"></div></div>
-    </div>
-    <div class="card"><table class="num">
-      <tr><td>${d.guests} guests × ${money(m.price)}<div class="xs muted">Menu, groceries, cooking, serving, clean-up</div></td><td>${money(q.sub)}</td></tr>
-      <tr><td>Service fee (${S.brand.feePct}%)</td><td>${money(q.fee)}</td></tr>
-      <tr class="tot"><td>Total</td><td>${money(q.total)}</td></tr></table></div>`;
-  if (st.step === 2) body = `
-    <div class="card stack"><h3>Allergies & diets</h3>
-      <div><label for="al">Allergies (the chef sees these in red)</label><input id="al" value="${esc(d.allergies)}" placeholder="e.g. 1 guest: peanuts (severe)"></div>
-      <div><label for="di">Diets</label><input id="di" value="${esc(d.diet)}" placeholder="e.g. 2 vegetarian, 1 halal"></div></div>
-    <div class="card"><h3 style="margin-bottom:6px">Your kitchen</h3>
-      <label class="tick"><input type="checkbox" data-kc="oven" ${d.kitchen.oven ? "checked" : ""}> Working oven</label>
-      <label class="tick"><input type="checkbox" data-kc="plates" ${d.kitchen.plates ? "checked" : ""}> Enough plates & cutlery for everyone</label>
-      <label class="tick"><input type="checkbox" data-kc="parking" ${d.kitchen.parking ? "checked" : ""}> Parking near the door</label>
-      <div style="margin-top:10px"><label for="hob">Hob type</label><select id="hob">${["Gas", "Induction", "Electric", "None"].map(h => `<option ${h === d.kitchen.hob ? "selected" : ""}>${h}</option>`).join("")}</select></div>
-      <div class="xs muted" style="margin-top:8px">No plates or oven? The chef brings what's missing (may add a small rental fee).</div></div>
-    <div class="card stack"><div><label for="nt">Anything else? (occasion, access, timing)</label><textarea id="nt">${esc(d.notes)}</textarea></div></div>`;
-  if (st.step === 3) body = `
-    <div class="card stack">
-      <div class="row"><div class="avatar" style="background:${c.color}">${esc(c.name[0])}</div><div class="grow"><b>${esc(m.name)}</b><div class="sm muted">${esc(c.name)} · ${fmtDate(d.date)} · ${esc(d.time)} · ${d.guests} guests</div></div></div>
-      ${d.allergies ? `<div class="allergy">⚠ ${esc(d.allergies)}</div>` : ""}
-      <div class="grid2"><div><label for="nm">Your name</label><input id="nm" value="${esc(d.client)}" autocomplete="name"></div><div><label for="ph">Phone</label><input id="ph" type="tel" value="${esc(d.phone)}" autocomplete="tel"></div></div>
-    </div>
-    <div class="card"><table class="num">
-      <tr><td>Total</td><td>${money(q.total)}</td></tr>
-      <tr class="tot"><td>Deposit today (${S.brand.depositPct}%)</td><td>${money(q.deposit)}</td></tr>
-      <tr><td class="muted">Balance after the dinner</td><td class="muted">${money(q.total - q.deposit)}</td></tr></table></div>
-    <div class="note"><b>Cancellation:</b> free up to 14 days before. 7–14 days: deposit kept. Under 7 days: 50% charged, because groceries are already bought. If the chef cancels, you get a full refund plus priority rebooking.${dAway < 7 ? `<br><b>Your date is ${dAway} days away.</b>` : ""}</div>`;
-  app.innerHTML = `<button class="back" id="bk">‹ ${st.step === 1 ? "Back" : steps[st.step - 2]}</button>
-    <div><span class="eyebrow">Step ${st.step} of 3</span><h2 style="font-size:24px">${steps[st.step - 1]}</h2></div>
-    ${body}
-    <button class="btn block" id="next">${st.step < 3 ? "Continue" : "Pay deposit " + money(q.deposit) + " (demo)"}</button>`;
-  const $ = s => app.querySelector(s);
-  $("#bk").onclick = () => { if (st.step > 1) { st.step--; render(); } else back(); };
-  if (st.step === 1) {
-    $("#minus").onclick = () => { d.guests = Math.max(m.min, d.guests - 1); render(); };
-    $("#plus").onclick = () => { d.guests = Math.min(60, d.guests + 1); render(); };
-    $("#date").onchange = e => { d.date = e.target.value || d.date; };
-    $("#time").onchange = e => { d.time = e.target.value; };
-  }
-  if (st.step === 2) {
-    $("#al").oninput = e => d.allergies = e.target.value; $("#di").oninput = e => d.diet = e.target.value; $("#nt").oninput = e => d.notes = e.target.value;
-    $("#hob").onchange = e => d.kitchen.hob = e.target.value;
-    app.querySelectorAll("[data-kc]").forEach(x => x.onchange = () => d.kitchen[x.dataset.kc] = x.checked);
-  }
-  if (st.step === 3) { $("#nm").oninput = e => d.client = e.target.value; $("#ph").oninput = e => d.phone = e.target.value; }
-  $("#next").onclick = () => {
-    if (st.step < 3) { st.step++; return render(); }
-    if (!d.client.trim()) { $("#nm").focus(); $("#nm").style.borderColor = "var(--bad)"; return; }
-    const bk = { id: uid(), chefId: c.id, menuId: m.id, ...JSON.parse(JSON.stringify(d)), status: "new", created: Date.now() };
-    S.bookings.push(bk); save();
-    V.stack = [{ s: "booked", id: bk.id }]; render();
+function bookSheet(c, m) {
+  const d = { guests: Math.max(m.min, Math.min(filter.guests, 40)), date: filter.date || day(7), time: "19:30", allergies: "", diet: "", kitchen: { oven: true, hob: "Gas", plates: true, parking: false }, notes: "", client: "", code: "" };
+  let step = 1;
+  const codeValue = sub => {
+    const code = d.code.trim().toUpperCase();
+    if (code && code === "WELCOME" + S.brand.welcome && S.promos.welcome && !S.usedWelcome) return [S.brand.welcome, "Welcome offer"];
+    if (code === "FRIEND25") return [25, "Friend referral"];
+    if (c.you && code && code === (S.promos.code || "").toUpperCase()) return [sub * .1, "Chef's promo code"];
+    const g = code && S.gifts.find(x => x.code === code); if (g) return [Math.min(g.amt, sub), "Gift card"];
+    if (c.you && S.promos.lastMinute && daysAway(d.date) <= 0) return [sub * .15, "Tonight deal"];
+    if (c.you && S.promos.group && d.guests >= 12) return [sub * .1, "Group 12+"];
+    return [0, ""];
   };
-};
-
-SCREENS.booked = ({ id }) => {
-  const b = S.bookings.find(x => x.id === id), c = chefById(b.chefId);
-  app.innerHTML = `<div class="card stack" style="text-align:center;padding:28px 18px">
-    <div class="done-ic">✓</div><h2>Request sent to ${esc(c.name.split(" ")[0])}</h2>
-    <p class="muted" style="margin:0">Chefs answer within 2 hours. If they decline, your deposit is returned automatically and we suggest similar chefs.</p></div>
-    <div class="note">Demo tip: switch to <b>Chef</b> at the top${c.you ? " to see this request arrive in your inbox." : ". This request went to a sample chef. Book a menu on your own profile to see it arrive in your chef inbox."}</div>
-    <button class="btn block dark" id="mine">See my bookings</button>`;
-  app.querySelector("#mine").onclick = () => { V.tab = "mine"; V.stack = []; render(); };
-};
-
-SCREENS.mine = () => {
-  const list = [...S.bookings].filter(b => !String(b.client).startsWith("Sample")).sort((a, b) => b.created - a.created);
-  const pre = S.preorders;
-  app.innerHTML = `<h2>My bookings</h2>
-    ${list.length ? list.map(b => { const c = chefById(b.chefId), m = menuOf(b), q = quote(m, b.guests); return `<div class="card stack">
-      <div class="row"><b class="grow">${esc(m.name)}</b><span class="status ${b.status}">${b.status === "new" ? "waiting" : b.status}</span></div>
-      <div class="sm muted">${esc(c.name)} · ${fmtDate(b.date)} ${esc(b.time)} · ${b.guests} guests</div>
-      <div class="sm num">Deposit paid ${money(q.deposit)} · balance ${money(q.total - q.deposit)}</div></div>`; }).join("")
-    : `<div class="empty">No bookings yet.<br>Find a chef and book a menu. It takes about 3 minutes.</div>`}
-    ${pre.length ? `<h3 style="font-size:18px">Pop-up pre-orders</h3>${pre.map(p => { const pp = S.popups.find(x => x.id === p.popupId); return `<div class="card sm"><b>${esc(pp.title)}</b> · ${fmtDate(pp.date)}<div class="muted">${Object.entries(p.items).filter(([, n]) => n).map(([i, n]) => `${n}× ${esc(pp.items[i].name)}`).join(", ")} · ${money(p.total)} · collect at ${esc(pp.place)}</div></div>`; }).join("")}` : ""}`;
-};
+  openSheet("Book " + c.name.split(" ")[0], "", function draw(api) {
+    const sub = m.price * d.guests, [disc, why] = codeValue(sub), q = quote(m, d.guests, disc);
+    let h = `<div class="seg full" aria-hidden="true">${["Dinner", "Kitchen", "Confirm"].map((t, i) => `<button class="${step === i + 1 ? "on" : ""}" tabindex="-1">${i + 1}. ${t}</button>`).join("")}</div>`;
+    if (step === 1) h += `
+      <div class="row">${slider([c.you && PHOTOS[0] ? { img: PHOTOS[0] } : { scene: c.scenes[1] || "plate", hue: c.hue }], "", "", "width:84px;height:84px;border-radius:14px;flex:none")}<div class="grow"><b>${esc(m.name)}</b><div class="fn muted">${esc(c.name)} · ${money(m.price)} per guest</div></div></div>
+      <div><div class="list"><div class="cell"><span class="grow">Guests</span><span class="stepper"><button id="gm" aria-label="Fewer guests">−</button><b class="num">${d.guests}</b><button id="gp" aria-label="More guests">+</button></span></div>
+        <div class="cell"><span class="grow">Date</span><input type="date" id="dd" value="${d.date}" min="${day(0)}" aria-label="Date"></div>
+        <div class="cell"><span class="grow">Dinner time</span><input type="time" id="dt" value="${d.time}" aria-label="Dinner time"></div></div>
+      <div class="list-f">Minimum ${m.min} guests for this menu.</div></div>
+      <div class="list" style="padding:12px 16px"><table class="sum num"><tr><td>${d.guests} × ${money(m.price)}</td><td>${money(q.sub)}</td></tr><tr><td>Service fee</td><td>${money(q.fee)}</td></tr>${disc ? `<tr><td style="color:var(--good)">${why}</td><td style="color:var(--good)">−${money(disc)}</td></tr>` : ""}<tr class="tot"><td>Total</td><td>${money(q.total)}</td></tr></table></div>`;
+    if (step === 2) h += `
+      <div><div class="list-h">Allergies & diets</div><div class="list" style="padding:12px;display:grid;gap:10px">
+        <div class="field"><label for="al">Allergies (the chef sees these in red)</label><input id="al" value="${esc(d.allergies)}" placeholder="e.g. 1 guest: peanuts (severe)"></div>
+        <div class="field"><label for="di">Diets</label><input id="di" value="${esc(d.diet)}" placeholder="e.g. 2 vegetarian, 1 halal"></div></div></div>
+      <div><div class="list-h">Your kitchen</div><div class="list">
+        ${[["oven", "Working oven"], ["plates", "Plates & cutlery for everyone"], ["parking", "Parking near the door"]].map(([k, l]) => `<div class="cell"><span class="grow">${l}</span><label class="switch"><input type="checkbox" data-kc="${k}" ${d.kitchen[k] ? "checked" : ""} aria-label="${l}"><span></span></label></div>`).join("")}
+        <div class="cell"><span class="grow">Hob</span><select id="hob" aria-label="Hob type">${["Gas", "Induction", "Electric", "None"].map(x => `<option ${x === d.kitchen.hob ? "selected" : ""}>${x}</option>`).join("")}</select></div></div>
+        <div class="list-f">Missing something? The chef brings it.</div></div>
+      <div class="field"><label for="nt">Occasion, access, timing</label><textarea id="nt" placeholder="e.g. Surprise party, use the side gate">${esc(d.notes)}</textarea></div>`;
+    if (step === 3) h += `
+      ${d.allergies ? `<div class="allergy">⚠ ${esc(d.allergies)}</div>` : ""}
+      <div class="list" style="padding:14px 16px"><table class="sum num">
+        <tr><td>${esc(m.name)}<div class="cap muted">${d.guests} guests · ${fmtDate(d.date)} ${esc(d.time)}</div></td><td>${money(q.sub)}</td></tr>
+        <tr><td>Service fee</td><td>${money(q.fee)}</td></tr>
+        ${disc ? `<tr><td style="color:var(--good)">${why}</td><td style="color:var(--good)">−${money(disc)}</td></tr>` : ""}
+        <tr class="tot"><td>Total</td><td>${money(q.total)}</td></tr>
+        <tr><td><b>Due today (${S.brand.depositPct}% deposit)</b></td><td><b>${money(q.deposit)}</b></td></tr></table></div>
+      <div class="list"><div class="cell"><span class="grow">Promo or gift code</span><input id="pc" value="${esc(d.code)}" placeholder="Add code" autocapitalize="characters" aria-label="Promo or gift code"></div></div>
+      <div class="field"><label for="nm">Your name</label><input id="nm" value="${esc(d.client)}" autocomplete="name"></div>
+      <div class="note"><b>Free cancellation</b> up to 14 days before. 7–14 days: deposit kept. Under 7 days: 50%, because groceries are bought.</div>`;
+    h += `<div class="row">${step > 1 ? `<button class="btn plain" id="prev">Back</button>` : ""}<button class="btn grow" id="next">${step < 3 ? "Continue" : "Pay " + money(q.deposit) + " deposit"}</button></div>`;
+    api.body.innerHTML = h; wireSliders(api.body);
+    const $ = s => api.body.querySelector(s);
+    if (step === 1) {
+      $("#gm").onclick = () => { d.guests = Math.max(m.min, d.guests - 1); draw(api); };
+      $("#gp").onclick = () => { d.guests = Math.min(80, d.guests + 1); draw(api); };
+      $("#dd").onchange = e => { d.date = e.target.value || d.date; draw(api); }; $("#dt").onchange = e => d.time = e.target.value;
+    }
+    if (step === 2) {
+      $("#al").oninput = e => d.allergies = e.target.value; $("#di").oninput = e => d.diet = e.target.value; $("#nt").oninput = e => d.notes = e.target.value;
+      $("#hob").onchange = e => d.kitchen.hob = e.target.value; api.body.querySelectorAll("[data-kc]").forEach(x => x.onchange = () => d.kitchen[x.dataset.kc] = x.checked);
+    }
+    if (step === 3) { $("#pc").onchange = e => { d.code = e.target.value; draw(api); if (codeValue(sub)[0]) toast("Code applied"); }; $("#nm").oninput = e => d.client = e.target.value; }
+    if ($("#prev")) $("#prev").onclick = () => { step--; draw(api); };
+    $("#next").onclick = () => {
+      if (step < 3) { step++; return draw(api); }
+      if (!d.client.trim()) { $("#nm").focus(); $("#nm").style.boxShadow = "0 0 0 2px var(--bad)"; toast("Add your name to continue"); return; }
+      if (why === "Welcome offer") S.usedWelcome = true;
+      S.bookings.push({ id: uid(), chefId: c.id, menuId: m.id, ...JSON.parse(JSON.stringify(d)), discount: disc, status: "new", created: Date.now(), mine: true }); save();
+      api.title("Request sent");
+      api.body.innerHTML = `<div class="done"><span class="ok">${I.check}</span><b style="font-size:22px">${esc(c.name.split(" ")[0])} has your request</b><span class="muted">Chefs reply within 2 hours. If they can't make it, your deposit comes back automatically.</span></div>
+        ${c.you ? `<div class="note">Demo: switch to <b>Chef</b> at the top to see this request arrive.</div>` : ""}<button class="btn block" id="seeb">See my dinners</button>`;
+      $("#seeb").onclick = () => { api.close(); V.tab = "dinners"; V.stack = []; render(); };
+    };
+  });
+}
 
 function popCard(p) {
   const c = chefById(p.chefId), sold = Object.values(p.sold).reduce((a, n) => a + n, 0);
-  return `<button class="chef" data-pop="${p.id}"><div class="avatar" style="background:${c.color}">${I.tent.replace("<svg", '<svg width="26" height="26"')}</div>
-    <div class="grow stack" style="gap:3px"><b>${esc(p.title)}</b><div class="sm muted">${esc(c.name)} · ${fmtDate(p.date)} · ${esc(p.time)}</div><div class="sm muted">${esc(p.place)}</div>
-    <div class="chips"><span class="chip accent">${sold} pre-ordered</span><span class="chip">Skip the queue</span></div></div></button>`;
+  return `<div class="chef-card" data-pop="${p.id}" role="button" tabindex="0" aria-label="${esc(p.title)}">${slider([{ scene: "popup", hue: c.hue }], "", `<span class="tag">${sold} pre-ordered</span>`)}
+    <div class="meta"><div class="top"><b>${esc(p.title)}</b><span class="fn muted">${fmtDate(p.date)}</span></div><span class="fn muted">${esc(c.name)} · ${esc(p.place)} · ${esc(p.time)}</span></div></div>`;
 }
-SCREENS.popups = () => {
-  app.innerHTML = `<div><span class="eyebrow">Pop-ups, booths & supper clubs</span><h2>Pre-order, skip the queue</h2></div>
-    <p class="muted" style="margin:0">Order ahead and pick up at the stall. Chefs know how much to cook, and you don't wait in line.</p>
-    <div class="stack">${S.popups.map(popCard).join("")}</div>`;
-  app.querySelectorAll("[data-pop]").forEach(b => b.onclick = () => go({ s: "pop", id: b.dataset.pop, cart: {} }));
+PAGES.popups = () => {
+  app.innerHTML = `<div><h1 class="large">Pop-ups</h1><div class="subtitle">Supper clubs, street food & market stalls. Pre-order and skip the queue.</div></div>
+    <div class="stack" style="gap:24px">${S.popups.map(popCard).join("")}</div>`;
+  app.querySelectorAll("[data-pop]").forEach(b => { b.onclick = () => popSheet(b.dataset.pop); b.onkeydown = e => { if (e.key === "Enter") popSheet(b.dataset.pop); }; });
 };
-SCREENS.pop = (st) => {
-  const p = S.popups.find(x => x.id === st.id), c = chefById(p.chefId); st.cart = st.cart || {};
-  const total = p.items.reduce((a, it, i) => a + (st.cart[i] || 0) * it.price, 0);
-  app.innerHTML = `<button class="back" id="bk">‹ Back</button>
-    <div class="card stack"><h2>${esc(p.title)}</h2><div class="sm muted">${esc(c.name)} · ${fmtDate(p.date)} · ${esc(p.time)}<br>${esc(p.place)}</div></div>
-    <div class="card">${p.items.map((it, i) => `<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><div class="grow"><b>${esc(it.name)}</b><div class="sm muted num">${money(it.price)}</div></div>
-      <div class="stepper"><button data-dec="${i}" aria-label="Remove one">−</button><b class="num" style="font-size:18px">${st.cart[i] || 0}</b><button data-inc="${i}" aria-label="Add one">+</button></div></div>`).join("")}</div>
-    <div class="grid2"><div><label for="pn">Name for pick-up</label><input id="pn" value="${esc(st.name || "")}"></div><div><label>Total</label><input disabled class="num" value="${money(total)}"></div></div>
-    <button class="btn block" id="go" ${total ? "" : "disabled style='opacity:.5'"}>Pre-order & pay ${money(total)} (demo)</button>`;
-  const $ = s => app.querySelector(s);
-  $("#bk").onclick = back;
-  $("#pn").oninput = e => st.name = e.target.value;
-  app.querySelectorAll("[data-inc]").forEach(b => b.onclick = () => { st.cart[b.dataset.inc] = (st.cart[b.dataset.inc] || 0) + 1; render(); });
-  app.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => { st.cart[b.dataset.dec] = Math.max(0, (st.cart[b.dataset.dec] || 0) - 1); render(); });
-  $("#go").onclick = () => {
-    if (!total) return;
-    Object.entries(st.cart).forEach(([i, n]) => p.sold[i] = (p.sold[i] || 0) + n);
-    S.preorders.push({ id: uid(), popupId: p.id, items: { ...st.cart }, name: st.name || "Guest", total }); save();
-    toast("Pre-order placed"); V.tab = "mine"; V.stack = []; render();
-  };
-};
-
-/* ================= CHEF SIDE ================= */
-const you = () => chefById("you");
-SCREENS.requests = () => {
-  const mine = S.bookings.filter(b => b.chefId === "you").sort((a, b) => a.date.localeCompare(b.date));
-  const groups = [["new", "New requests"], ["accepted", "Confirmed"], ["declined", "Declined"]];
-  app.innerHTML = `<div><span class="eyebrow">Chef inbox</span><h2>${you().name === "Your Name" ? "Hi Chef" : "Hi " + esc(you().name.split(" ")[0])} 👋</h2></div>
-    <div class="note">Every request arrives complete: menu, guests, allergies, kitchen check and deposit already paid. You don't write proposals or chase anyone.</div>
-    ${groups.map(([k, l]) => { const g = mine.filter(b => b.status === k); return g.length ? `<h3 style="font-size:17px">${l} · ${g.length}</h3>${g.map(reqCard).join("")}` : ""; }).join("")}
-    ${!mine.length ? '<div class="empty">No requests yet. Share your booking link from Profile.</div>' : ""}`;
-  app.querySelectorAll("[data-req]").forEach(b => b.onclick = () => go({ s: "req", id: b.dataset.req }));
-};
-function reqCard(b) {
-  const m = menuOf(b), q = quote(m, b.guests);
-  return `<button class="chef" data-req="${b.id}"><div class="grow stack" style="gap:4px">
-    <div class="row"><b class="grow">${esc(b.client)}</b><span class="status ${b.status}">${b.status}</span></div>
-    <div class="sm muted">${fmtDate(b.date)} · ${esc(b.time)} · ${b.guests} guests · ${esc(m.name)}</div>
-    ${b.allergies ? `<div class="allergy" style="font-size:13px;padding:5px 8px">⚠ ${esc(b.allergies)}</div>` : ""}
-    <div class="sm num">You get <b>${money(q.chefGets)}</b> · deposit secured</div></div></button>`;
-}
-SCREENS.req = ({ id }) => {
-  const b = S.bookings.find(x => x.id === id), m = menuOf(b), q = quote(m, b.guests), k = b.kitchen;
-  const shop = m.courses.map(c => `<li>${esc(c)} × ${b.guests}</li>`).join("");
-  app.innerHTML = `<button class="back" id="bk">‹ Requests</button>
-    <div class="card stack"><div class="row"><h2 class="grow" style="font-size:22px">${esc(b.client)}</h2><span class="status ${b.status}">${b.status}</span></div>
-      <div class="sm">${fmtDate(b.date)} · ${esc(b.time)} · <b>${b.guests} guests</b> · ${daysAway(b.date)} days away</div>
-      <div class="sm"><b>${esc(m.name)}</b></div>
-      ${b.allergies ? `<div class="allergy">⚠ ALLERGY: ${esc(b.allergies)}</div>` : '<div class="sm muted">No allergies declared.</div>'}
-      ${b.diet ? `<div class="sm">Diets: <b>${esc(b.diet)}</b></div>` : ""}
-      ${b.notes ? `<div class="note">${esc(b.notes)}</div>` : ""}</div>
-    <div class="card"><h3 style="margin-bottom:6px">Kitchen check</h3><div class="chips">
-      <span class="chip ${k.oven ? "good" : ""}">${k.oven ? "✓" : "✗"} Oven</span><span class="chip">Hob: ${esc(k.hob)}</span>
-      <span class="chip ${k.plates ? "good" : ""}">${k.plates ? "✓ Plates" : "✗ Bring plates"}</span><span class="chip ${k.parking ? "good" : ""}">${k.parking ? "✓ Parking" : "✗ No parking"}</span></div></div>
-    <div class="card"><table class="num">
-      <tr><td>Menu ${b.guests} × ${money(m.price)}</td><td>${money(q.sub)}</td></tr>
-      <tr class="tot"><td>Your payout (100%)</td><td>${money(q.chefGets)}</td></tr>
-      <tr><td class="muted">On a ${S.brand.rivalCommission}% commission app you'd get</td><td class="muted">${money(q.rivalGets)}</td></tr></table>
-      <div class="xs muted" style="margin-top:6px">Client paid ${money(q.deposit)} deposit. The balance is released to you 24h after the dinner.</div></div>
-    <details class="card"><summary><b>Prep list</b></summary><ul class="courses" style="margin-top:8px">${shop}</ul></details>
-    ${b.status === "new" ? `<div class="grid2"><button class="btn ghost" id="dec">Decline</button><button class="btn" id="acc">Accept</button></div>` : ""}`;
-  app.querySelector("#bk").onclick = back;
-  if (b.status === "new") {
-    app.querySelector("#acc").onclick = () => { b.status = "accepted"; save(); toast("Booked! Client notified"); back(); };
-    armed(app.querySelector("#dec"), "Tap again to decline", () => { b.status = "declined"; save(); toast("Declined. Client refunded"); back(); });
-  }
-};
-
-SCREENS.earnings = () => {
-  const acc = S.bookings.filter(b => b.chefId === "you" && b.status === "accepted");
-  const tot = acc.reduce((a, b) => { const q = quote(menuOf(b), b.guests); a.me += q.chefGets; a.rival += q.rivalGets; a.guests += b.guests; return a; }, { me: 0, rival: 0, guests: 0 });
-  const pops = S.popups.filter(p => p.chefId === "you");
-  const max = Math.max(tot.me, 1);
-  app.innerHTML = `<div><span class="eyebrow">Earnings</span><h2>Booked income</h2></div>
-    <div class="kpis num"><div class="kpi"><b>${money(tot.me)}</b><span>Your payout</span></div><div class="kpi"><b>${acc.length}</b><span>Confirmed dinners</span></div><div class="kpi"><b>${tot.guests}</b><span>Guests fed</span></div></div>
-    <div class="card stack"><h3>Keep more of every booking</h3>
-      <div class="bars num">
-        <div class="bar"><span>${esc(S.brand.name)}</span><i style="width:100%"></i><b>${money(tot.me)}</b></div>
-        <div class="bar"><span>${S.brand.rivalCommission}% app</span><i class="alt" style="width:${tot.rival / max * 100}%"></i><b>${money(tot.rival)}</b></div></div>
-      <div class="sm">That's <b>${money(tot.me - tot.rival)}</b> more for you. The client pays a ${S.brand.feePct}% service fee and your price stays whole.</div></div>
-    ${pops.map(p => { const sold = p.items.map((it, i) => p.sold[i] || 0), rev = p.items.reduce((a, it, i) => a + it.price * (p.sold[i] || 0), 0); return `<div class="card stack">
-      <div class="row"><h3 class="grow">${esc(p.title)}</h3><span class="xs muted">${fmtDate(p.date)}</span></div>
-      <div class="sm muted">Pre-orders tell you what to prep. Cook these quantities, plus a walk-up buffer.</div>
-      <table class="num">${p.items.map((it, i) => `<tr><td>${esc(it.name)}</td><td>${sold[i]} pre-ordered → prep <b>${Math.ceil(sold[i] * 1.6)}</b></td></tr>`).join("")}
-      <tr class="tot"><td>Pre-sold revenue</td><td>${money(rev)}</td></tr></table></div>`; }).join("")}`;
-};
-
-SCREENS.menus = () => {
-  const c = you();
-  app.innerHTML = `<div><span class="eyebrow">Your menus</span><h2>Fixed prices, groceries included</h2></div>
-    <div class="note">Set one all-in price per guest. Clients book instantly, and you never write a custom proposal for a tyre-kicker again.</div>
-    ${c.menus.map((m, i) => `<div class="card stack">
-      <div><label for="mn${i}">Menu name</label><input id="mn${i}" data-mi="${i}" data-f="name" value="${esc(m.name)}"></div>
-      <div class="grid2"><div><label for="mp${i}">Price / guest (all-in)</label><input id="mp${i}" type="number" inputmode="decimal" data-mi="${i}" data-f="price" value="${m.price}"></div>
-      <div><label for="mm${i}">Min guests</label><input id="mm${i}" type="number" inputmode="numeric" data-mi="${i}" data-f="min" value="${m.min}"></div></div>
-      <div><label for="mc${i}">Courses (one per line)</label><textarea id="mc${i}" data-mi="${i}" data-f="courses">${esc(m.courses.join("\n"))}</textarea></div>
-      <button class="btn ghost sm" data-del="${i}" style="justify-self:start">Remove menu</button></div>`).join("")}
-    <button class="btn block dark" id="add">+ Add a menu</button>`;
-  app.querySelectorAll("[data-mi]").forEach(el => el.oninput = () => {
-    const m = c.menus[+el.dataset.mi], f = el.dataset.f;
-    m[f] = f === "courses" ? el.value.split("\n").filter(Boolean) : (f === "name" ? el.value : Math.max(0, +el.value || 0)); save();
+function popSheet(id) {
+  const p = S.popups.find(x => x.id === id), c = chefById(p.chefId), cart = {};
+  openSheet(p.title, "", function draw(api) {
+    const total = p.items.reduce((a, it, i) => a + (cart[i] || 0) * it.price, 0);
+    api.body.innerHTML = `<div class="fn muted">${esc(c.name)} · ${fmtDate(p.date)} · ${esc(p.time)} · ${esc(p.place)}</div>
+      <div class="list">${p.items.map((it, i) => `<div class="cell"><span class="grow"><b>${esc(it.name)}</b><div class="fn muted num">${money(it.price)}</div></span><span class="stepper"><button data-d="${i}" aria-label="Remove one ${esc(it.name)}">−</button><b class="num">${cart[i] || 0}</b><button data-i="${i}" aria-label="Add one ${esc(it.name)}">+</button></span></div>`).join("")}</div>
+      <button class="btn block" id="po" ${total ? "" : "disabled"}>Pre-order · ${money(total)}</button>`;
+    api.body.querySelectorAll("[data-i]").forEach(b => b.onclick = () => { cart[b.dataset.i] = (cart[b.dataset.i] || 0) + 1; draw(api); });
+    api.body.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { cart[b.dataset.d] = Math.max(0, (cart[b.dataset.d] || 0) - 1); draw(api); });
+    api.body.querySelector("#po").onclick = () => { if (!total) return; Object.entries(cart).forEach(([i, n]) => p.sold[i] = (p.sold[i] || 0) + n); S.preorders.push({ id: uid(), popupId: p.id, items: { ...cart }, total }); save(); api.close(); toast("Pre-ordered. Give your name at the stall"); render(); };
   });
-  app.querySelectorAll("[data-del]").forEach(b => armed(b, "Tap again to remove", () => { c.menus.splice(+b.dataset.del, 1); save(); render(); }));
+}
+PAGES.dinners = () => {
+  const list = S.bookings.filter(b => b.mine).sort((a, b) => a.date.localeCompare(b.date));
+  app.innerHTML = `<div><h1 class="large">My dinners</h1></div>
+    ${list.length ? `<div class="stack">${list.map(b => { const c = chefById(b.chefId), m = menuOf(b), q = quote(m, b.guests, b.discount); return `<div class="bk"><div class="top">${slider([{ scene: c.scenes[0], hue: c.hue }], "", "", "width:56px;height:56px;border-radius:12px;flex:none")}<div class="grow"><b>${esc(m.name)}</b><div class="fn muted">${esc(c.name)} · ${fmtDate(b.date)} ${esc(b.time)} · ${b.guests} guests</div></div><span class="status ${b.status}">${b.status === "new" ? "Pending" : b.status === "accepted" ? "Confirmed" : "Declined"}</span></div><div class="fn muted num">Deposit paid ${money(q.deposit)} · ${money(q.total - q.deposit)} after dinner</div></div>`; }).join("")}</div>`
+    : `<div class="list" style="padding:18px;text-align:center;display:grid;gap:10px;justify-items:center">${slider([{ scene: "table", hue: 22 }], "", "", "width:100%;height:150px")}<b>No dinners booked yet</b><span class="fn muted">Find a chef and book a menu in about three minutes.</span><button class="btn sm" id="exp">Explore chefs</button></div>`}
+    ${S.preorders.length ? `<div><div class="list-h">Pop-up pre-orders</div><div class="list">${S.preorders.map(o => { const p = S.popups.find(x => x.id === o.popupId); return `<div class="cell"><span class="grow"><b>${esc(p.title)}</b><div class="fn muted">${Object.entries(o.items).filter(([, n]) => n).map(([i, n]) => `${n}× ${esc(p.items[i].name)}`).join(", ")}</div></span><span class="val num">${money(o.total)}</span></div>`; }).join("")}</div></div>` : ""}`;
+  const e = app.querySelector("#exp"); if (e) e.onclick = () => { V.tab = "discover"; render(); };
+};
+PAGES.saved = () => {
+  const list = S.chefs.filter(c => S.favs.includes(c.id));
+  app.innerHTML = `<div><h1 class="large">Saved</h1></div>${list.length ? `<div class="stack" style="gap:26px">${list.map(chefCard).join("")}</div>` : `<div class="list" style="padding:28px 18px;text-align:center;display:grid;gap:8px;justify-items:center"><span style="width:40px;color:var(--accent);display:grid">${I.heart}</span><b>Save chefs you love</b><span class="fn muted">Tap the heart on any chef to keep them here.</span></div>`}`;
+  wireChefCards();
+};
+
+/* =========================== CHEF =========================== */
+const you = () => chefById("you");
+let bkSeg = "requests", bkDay = null;
+PAGES.bookings = () => {
+  const mine = S.bookings.filter(b => b.chefId === "you"), today = day(0);
+  const segs = { requests: mine.filter(b => b.status === "new"), upcoming: mine.filter(b => b.status === "accepted" && b.date >= today), past: mine.filter(b => b.date < today && b.status === "accepted") };
+  let list = [...segs[bkSeg]].sort((a, b) => bkSeg === "past" ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+  if (bkDay) list = mine.filter(b => b.date === bkDay && b.status !== "declined");
+  const week = Array.from({ length: 7 }, (_, i) => day(i));
+  const wk = mine.filter(b => b.status === "accepted" && b.date >= today && b.date <= day(6));
+  const wkPay = wk.reduce((a, b) => a + quote(menuOf(b), b.guests).chefGets, 0);
+  app.innerHTML = `<div><h1 class="large">Bookings</h1><div class="subtitle">${wk.length} confirmed this week · ${money(wkPay)} coming in</div></div>
+    <div class="week" role="group" aria-label="Next 7 days">${week.map(dt => { const d = new Date(dt + "T00:00"), has = mine.some(b => b.date === dt && b.status !== "declined"); return `<button data-day="${dt}" class="${bkDay === dt ? "on" : ""}" aria-label="${fmtDate(dt)}${has ? ", has bookings" : ""}">${d.toLocaleDateString(undefined, { weekday: "narrow" })}<b>${d.getDate()}</b><i class="${has ? "" : "none"}"></i></button>`; }).join("")}</div>
+    ${bkDay ? `<div class="row"><b class="grow">${fmtDate(bkDay)}</b><button class="btn sm plain" id="clr">Show all</button></div>` :
+    `<div class="seg full">${[["requests", "Requests"], ["upcoming", "Upcoming"], ["past", "Past"]].map(([k, l]) => `<button data-seg="${k}" class="${bkSeg === k ? "on" : ""}">${l}${segs[k].length ? ` · ${segs[k].length}` : ""}</button>`).join("")}</div>`}
+    <div class="stack">${list.map(b => { const m = menuOf(b), q = quote(m, b.guests); return `<button class="bk" data-bk="${b.id}">
+      <div class="top"><b class="grow">${esc(b.client)}</b><span class="status ${b.status}">${b.status === "new" ? "New request" : b.status === "accepted" ? "Confirmed" : "Declined"}</span></div>
+      <div class="fn muted">${fmtDate(b.date)} · ${esc(b.time)} · ${b.guests} guests · ${esc(m.name)}</div>
+      ${b.allergies ? `<div class="allergy fn" style="padding:6px 10px">⚠ ${esc(b.allergies)}</div>` : ""}
+      <div class="row fn"><span class="grow muted">${daysAway(b.date) > 0 ? `In ${daysAway(b.date)} days` : daysAway(b.date) === 0 ? "Today" : "Completed"}</span><b class="num">${money(q.chefGets)}</b></div></button>`; }).join("") || `<div class="list" style="padding:24px;text-align:center"><b>Nothing here</b><div class="fn muted">${bkSeg === "requests" ? "New requests arrive here with the deposit already paid." : "No dinners in this list yet."}</div></div>`}</div>`;
+  app.querySelectorAll("[data-seg]").forEach(b => b.onclick = () => { bkSeg = b.dataset.seg; render(); });
+  app.querySelectorAll("[data-day]").forEach(b => b.onclick = () => { bkDay = bkDay === b.dataset.day ? null : b.dataset.day; render(); });
+  const clr = app.querySelector("#clr"); if (clr) clr.onclick = () => { bkDay = null; render(); };
+  app.querySelectorAll("[data-bk]").forEach(b => b.onclick = () => bookingSheet(b.dataset.bk));
+};
+function bookingSheet(id) {
+  const b = S.bookings.find(x => x.id === id), m = menuOf(b), q = quote(m, b.guests, b.discount), k = b.kitchen;
+  openSheet(b.client, `
+    <div>${fmtDate(b.date)} · ${esc(b.time)} · <b>${b.guests} guests</b><div class="fn muted">${esc(m.name)}</div></div>
+    ${b.allergies ? `<div class="allergy">⚠ ALLERGY: ${esc(b.allergies)}</div>` : `<div class="fn muted">No allergies declared.</div>`}
+    ${b.diet ? `<div class="fn">Diets: <b>${esc(b.diet)}</b></div>` : ""}${b.notes ? `<div class="note">${esc(b.notes)}</div>` : ""}
+    <div><div class="list-h">Kitchen check</div><div class="list">
+      ${[["Oven", k.oven], ["Plates & cutlery", k.plates], ["Parking", k.parking]].map(([l, ok]) => `<div class="cell"><span class="grow">${l}</span><span class="val" style="color:${ok ? "var(--good)" : "var(--bad)"}">${ok ? "Yes" : l === "Parking" ? "Plan ahead" : "Bring your own"}</span></div>`).join("")}
+      <div class="cell"><span class="grow">Hob</span><span class="val">${esc(k.hob)}</span></div></div></div>
+    <div><div class="list-h">Payout</div><div class="list" style="padding:12px 16px"><table class="sum num">
+      <tr><td>${b.guests} × ${money(m.price)}</td><td>${money(q.sub)}</td></tr>
+      <tr class="tot"><td>You receive (100%)</td><td>${money(q.chefGets)}</td></tr>
+      <tr><td class="muted">On a ${S.brand.rivalCommission}% app</td><td class="muted">${money(q.rivalGets)}</td></tr></table></div>
+      <div class="list-f">The deposit is paid. The balance is released 24h after the dinner.</div></div>
+    <div class="row"><button class="btn plain grow" id="tl">Prep timeline</button><button class="btn plain grow" id="sl">Shopping list</button></div>
+    ${b.status === "new" ? `<div class="row"><button class="btn dest grow" id="dec">Decline</button><button class="btn grow" id="acc">Accept</button></div>` : ""}`, api => {
+    const $ = s => api.body.querySelector(s);
+    $("#tl").onclick = () => { api.close(); toolSheet("timeline", { time: b.time, guests: b.guests }); };
+    $("#sl").onclick = () => { api.close(); toolSheet("shopping", { bookingId: b.id }); };
+    if ($("#acc")) { $("#acc").onclick = () => { b.status = "accepted"; save(); api.close(); toast("Confirmed. The guest has been told"); render(); };
+      armed($("#dec"), "Tap again to decline", () => { b.status = "declined"; save(); api.close(); toast("Declined. The guest gets a full refund"); render(); }); }
+  });
+}
+
+/* ----- tools ----- */
+const TOOLS = [
+  ["price", "Menu pricing", "Turn food cost into a price per guest", I.calc, "#e0742c"],
+  ["timeline", "Prep timeline", "Work back from service time", I.clock, "#3d6b4f"],
+  ["scale", "Recipe scaler", "Scale a recipe to your guest count", I.scale, "#5a4a8a"],
+  ["shopping", "Shopping list", "Built from a booking", I.leaf, "#2f8a55"],
+  ["allergens", "Allergen matrix", "14 major allergens, dish by dish", I.alert, "#d1443a"],
+  ["booth", "Stall break-even", "Plates you must sell at a pop-up", I.tent, "#b8690f"],
+  ["quote", "Quote writer", "A polished reply in one tap", I.msg, "#3b6db3"],
+  ["deposit", "Cancellation check", "What you keep if a guest cancels", I.lock, "#7b6f64"],
+];
+PAGES.tools = () => {
+  app.innerHTML = `<div><h1 class="large">Tools</h1><div class="subtitle">Everyday maths and checklists for dinners and pop-ups.</div></div>
+    <div class="tools">${TOOLS.map(([k, t, s, ic, col]) => `<button class="tool" data-tool="${k}"><span class="icon-sq" style="background:${col}">${ic}</span><b>${t}</b><span>${s}</span></button>`).join("")}</div>`;
+  app.querySelectorAll("[data-tool]").forEach(b => b.onclick = () => toolSheet(b.dataset.tool));
+};
+const ALLERGENS = ["Gluten", "Crustaceans", "Eggs", "Fish", "Peanuts", "Soy", "Milk", "Tree nuts", "Celery", "Mustard", "Sesame", "Sulphites", "Lupin", "Molluscs"];
+function toolSheet(kind, opts = {}) {
+  const t = TOOLS.find(x => x[0] === kind);
+  const num = (id, label, val, suf = "") => `<div class="cell"><label class="grow" for="${id}">${label}</label><input type="number" inputmode="decimal" id="${id}" value="${val}" style="max-width:96px"><span class="val" style="min-width:16px">${suf}</span></div>`;
+  const live = (api, fn) => { api.body.querySelectorAll("input,select,textarea").forEach(x => x.addEventListener("input", fn)); fn(); };
+  const v = (api, id) => +api.body.querySelector("#" + id).value || 0;
+  if (kind === "price") return openSheet(t[1], `<div class="list">${num("fc", "Food cost per guest", 18, S.brand.currency)}${num("tp", "Target food cost", 30, "%")}${num("gu", "Guests", 8)}${num("hr", "Your hours", 7)}${num("rt", "Hourly rate", 35, S.brand.currency)}${num("tr", "Travel & extras", 30, S.brand.currency)}</div><div class="result" id="out" aria-live="polite"></div><div class="list-f">The price covers both your food-cost target and your time plus 30%. A food cost of 25–35% of the price is healthy for private dining.</div>`, api => live(api, () => {
+    const fc = v(api, "fc"), tp = Math.max(5, v(api, "tp")), g = Math.max(1, v(api, "gu")), lab = v(api, "hr") * v(api, "rt") + v(api, "tr");
+    const price = Math.ceil(Math.max(fc / (tp / 100), (fc * g + lab) * 1.3 / g)), profit = price * g - fc * g - lab;
+    api.body.querySelector("#out").innerHTML = `<span class="fn muted">Suggested price per guest</span><b class="num">${money(price)}</b><span class="fn num">${money(price * g)} total · ${money(profit)} profit after costs (${Math.round(profit / (price * g) * 100)}%)</span>`;
+  }));
+  if (kind === "timeline") return openSheet(t[1], `<div class="list"><div class="cell"><label class="grow" for="st">Service time</label><input type="time" id="st" value="${opts.time || "19:30"}"></div>${num("gu", "Guests", opts.guests || 8)}${num("tv", "Travel", 30, "min")}</div><div class="list" style="padding:16px"><div id="out"></div></div>`, api => live(api, () => {
+    const [hh, mm] = (api.body.querySelector("#st").value || "19:30").split(":").map(Number), base = hh * 60 + mm, g = v(api, "gu"), tv = v(api, "tv");
+    const setup = 150 + Math.max(0, g - 8) * 6;
+    const f = n => { const x = ((n % 1440) + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
+    const steps = [["Day before", "Shop, braise, make sauces, doughs & desserts. Confirm allergies with the host."], [f(base - setup - tv - 30), "Load the car: knife roll, mise en place, ice packs, plates if needed"], [f(base - setup - tv), "Leave for the venue"], [f(base - setup), "Arrive, meet the host, set up your station"], [f(base - setup + 30), "Prep veg & garnishes, preheat the oven"], [f(base - 45), "Canapés & drinks go out"], [f(base), "First course"], [f(base + 75 + g * 2), "Dessert"], [f(base + 120 + g * 2), "Clean the kitchen, pack up, leave"]];
+    api.body.querySelector("#out").innerHTML = steps.map(([tm, txt]) => `<div class="tl"><span class="t num">${tm}</span><span class="dot"></span><span class="fn">${txt}</span></div>`).join("");
+  }));
+  if (kind === "scale") return openSheet(t[1], `<div class="list">${num("from", "Recipe serves", 4)}${num("to", "You need", 12)}</div><div class="field"><label for="rec">Ingredients, one per line</label><textarea id="rec" style="min-height:130px">500 g lamb shoulder
+2 tbsp olive oil
+1 onion
+250 ml stock
+1/2 tsp cumin</textarea></div><div class="list" id="out" aria-live="polite"></div>`, api => live(api, () => {
+    const r = v(api, "to") / Math.max(1, v(api, "from"));
+    api.body.querySelector("#out").innerHTML = api.body.querySelector("#rec").value.split("\n").filter(l => l.trim()).map(l => { const mt = l.match(/^\s*([\d.,\/]+)\s*(.*)$/); if (!mt) return `<div class="cell fn">${esc(l)}</div>`; let n = mt[1].includes("/") ? mt[1].split("/").map(Number).reduce((a, b) => a / b) : parseFloat(mt[1].replace(",", ".")); n = Math.round(n * r * 100) / 100; return `<div class="cell fn"><b class="num" style="min-width:56px">${n}</b><span>${esc(mt[2])}</span></div>`; }).join("");
+  }));
+  if (kind === "shopping") {
+    const bks = S.bookings.filter(b => b.chefId === "you" && b.status !== "declined");
+    return openSheet(t[1], `<div class="list"><div class="cell"><label class="grow" for="bk">Booking</label><select id="bk">${bks.map(b => `<option value="${b.id}" ${b.id === opts.bookingId ? "selected" : ""}>${esc(b.client)} · ${fmtDate(b.date)}</option>`).join("")}</select></div></div><div id="out" class="stack"></div><button class="btn block plain" id="cp">Copy list</button>`, api => {
+      const cur = () => S.bookings.find(x => x.id === api.body.querySelector("#bk").value);
+      const draw = () => { const b = cur(); if (!b) return; const m = menuOf(b), g = Math.ceil(b.guests * 1.1);
+        api.body.querySelector("#out").innerHTML = `<div class="note">${b.guests} guests + 10% buffer = cook for <b>${g}</b>.${b.allergies ? ` <span style="color:var(--bad);font-weight:600">⚠ ${esc(b.allergies)}</span>` : ""}</div>` + m.courses.map(c => `<div><div class="list-h">${esc(c)} × ${g}</div><div class="list">${c.split(/,|&| and |:/).map(x => x.trim()).filter(Boolean).map(x => `<label class="cell"><input type="checkbox" style="width:22px;height:22px;flex:none;accent-color:var(--accent)"><span class="grow">${esc(x)}</span></label>`).join("")}</div></div>`).join(""); };
+      api.body.querySelector("#bk").onchange = draw; draw();
+      api.body.querySelector("#cp").onclick = () => { const b = cur(); if (b) copy(`Shopping · ${b.client} · cook for ${Math.ceil(b.guests * 1.1)}\n` + menuOf(b).courses.map(c => "☐ " + c).join("\n"), "List copied"); };
+    });
+  }
+  if (kind === "allergens") {
+    const dishes = you().menus.flatMap(m => m.courses);
+    return openSheet(t[1], `<div class="fn muted">Tick what each dish contains. Show it to guests or put it on your stall.</div><div class="list matrix"><table><tr><th>Dish</th>${ALLERGENS.map(a => `<th style="writing-mode:vertical-rl;transform:rotate(180deg);font-weight:600;font-size:12px">${a}</th>`).join("")}</tr>
+      ${dishes.map((d, i) => `<tr><td style="max-width:150px">${esc(d)}</td>${ALLERGENS.map(a => `<td><input type="checkbox" data-d="${i}" data-a="${a}" ${(S.allergens[d] || []).includes(a) ? "checked" : ""} aria-label="${esc(d)} contains ${a}" style="width:18px;height:18px;accent-color:var(--bad)"></td>`).join("")}</tr>`).join("")}</table></div>`, api => {
+      api.body.querySelectorAll("[data-d]").forEach(x => x.onchange = () => { const d = dishes[+x.dataset.d], set = new Set(S.allergens[d] || []); x.checked ? set.add(x.dataset.a) : set.delete(x.dataset.a); S.allergens[d] = [...set]; save(); });
+    });
+  }
+  if (kind === "booth") return openSheet(t[1], `<div class="list">${num("pp", "Price per plate", 12, S.brand.currency)}${num("fc", "Food cost per plate", 3.8, S.brand.currency)}${num("pf", "Pitch / stall fee", 80, S.brand.currency)}${num("sf", "Staff & gas", 120, S.brand.currency)}${num("ex", "Plates you expect", 150)}</div><div class="result" id="out" aria-live="polite"></div>`, api => live(api, () => {
+    const pp = v(api, "pp"), fc = v(api, "fc"), fixed = v(api, "pf") + v(api, "sf"), ex = v(api, "ex"), mg = pp - fc, be = mg > 0 ? Math.ceil(fixed / mg) : null, profit = ex * mg - fixed;
+    api.body.querySelector("#out").innerHTML = be ? `<span class="fn muted">Break-even</span><b class="num">${be} plates</b><span class="fn num">At ${ex} plates you make <b style="color:${profit >= 0 ? "var(--good)" : "var(--bad)"}">${money(profit)}</b>. Each extra plate adds ${money(mg)}.</span>` : `<span class="fn" style="color:var(--bad)">Your price is below the food cost per plate.</span>`;
+  }));
+  if (kind === "deposit") return openSheet(t[1], `<div class="list">${num("tot", "Booking total", 680, S.brand.currency)}${num("days", "Days before the dinner", 5)}${num("spent", "Already spent on groceries", 120, S.brand.currency)}</div><div class="result" id="out" aria-live="polite"></div><div class="list-f">Policy: free up to 14 days before · 7–14 days the deposit is kept · under 7 days 50% is charged.</div>`, api => live(api, () => {
+    const tot = v(api, "tot"), dd = v(api, "days"), sp = v(api, "spent"), keep = dd > 14 ? 0 : dd >= 7 ? tot * S.brand.depositPct / 100 : tot * .5;
+    api.body.querySelector("#out").innerHTML = `<span class="fn muted">You keep</span><b class="num">${money(keep)}</b><span class="fn">${keep >= sp ? `Your grocery spend of ${money(sp)} is covered.` : `<span style="color:var(--bad)">${money(sp - keep)} of groceries isn't covered. Wait to shop until under 7 days out.</span>`}</span>`;
+  }));
+  return openSheet(t[1], `<div class="list"><div class="cell"><label class="grow" for="cn">Client name</label><input id="cn" value="Sarah"></div><div class="cell"><label class="grow" for="mn">Menu</label><select id="mn">${you().menus.map((m, i) => `<option value="${i}">${esc(m.name)}</option>`).join("")}</select></div>${num("gu", "Guests", 8)}<div class="cell"><label class="grow" for="dt">Date</label><input type="date" id="dt" value="${day(14)}"></div></div><div class="field"><label for="out">Message</label><textarea id="out" style="min-height:230px"></textarea></div><button class="btn block" id="cp">Copy message</button>`, api => {
+    live(api, () => { const m = you().menus[+api.body.querySelector("#mn").value] || you().menus[0], g = v(api, "gu"), dt = api.body.querySelector("#dt").value;
+      if (api.body.querySelector("#out") === document.activeElement) return;
+      api.body.querySelector("#out").value = `Hi ${api.body.querySelector("#cn").value || "there"},\n\nThank you for reaching out! For ${g} guests on ${fmtDate(dt)} I'd suggest my ${m.name}:\n\n${m.courses.map(c => "• " + c).join("\n")}\n\n${money(m.price)} per guest (${money(m.price * g)} total). That includes shopping, cooking, serving and leaving your kitchen spotless.\n\nYou can book and pay the ${S.brand.depositPct}% deposit here: ${S.brand.name.toLowerCase().replace(/\W+/g, "")}.com/${you().name.toLowerCase().replace(/\W+/g, "-")}\n\nTell me about any allergies and I'll take care of the rest.\n\n${you().name}`; });
+    api.body.querySelector("#cp").onclick = () => copy(api.body.querySelector("#out").value, "Message copied");
+  });
+}
+
+/* ----- extras ----- */
+const EXTRAS = [
+  ["earnings", "Earnings", I.coin, "#2f8a55"], ["menus", "Menus & prices", I.book, "#e0742c"], ["promotions", "Promotions", I.tag, "#d1443a"],
+  ["photos", "Photos", I.photo, "#3b6db3"], ["popupsC", "Pop-ups & pre-orders", I.tent, "#b8690f"], ["profileC", "Profile & booking link", I.user, "#5a4a8a"],
+  ["plan", "Business plan", I.bulb, "#2b211a"], ["brand", "Brand & settings", I.gear, "#7b6f64"],
+];
+PAGES.extras = () => {
+  const acc = S.bookings.filter(b => b.chefId === "you" && b.status === "accepted");
+  const pay = acc.reduce((a, b) => a + quote(menuOf(b), b.guests).chefGets, 0);
+  const saved = acc.reduce((a, b) => { const q = quote(menuOf(b), b.guests); return a + q.chefGets - q.rivalGets; }, 0);
+  app.innerHTML = `<div><h1 class="large">Extras</h1></div>
+    <button class="list row" id="me" style="padding:14px 16px;text-align:left;width:100%">${PHOTOS[0] ? `<img src="${PHOTOS[0]}" alt="" style="width:58px;height:58px;border-radius:50%;object-fit:cover">` : `<span class="av" style="width:58px;height:58px;font-size:20px;background:var(--accent)">${initials(you().name)}</span>`}<span class="grow"><b style="font-size:19px;display:block">${esc(you().name)}</b><span class="fn muted">${esc(you().cuisine)} · ★ ${you().rating}</span></span><span style="width:14px;color:var(--sec);opacity:.5;display:grid">${I.chev}</span></button>
+    <div class="stat-row num"><div class="stat"><b>${money(pay)}</b><span>Booked payouts</span></div><div class="stat"><b>${acc.length}</b><span>Dinners</span></div><div class="stat"><b>${money(saved)}</b><span>Kept vs ${S.brand.rivalCommission}% apps</span></div></div>
+    ${[EXTRAS.slice(0, 3), EXTRAS.slice(3, 6), EXTRAS.slice(6)].map(g => `<div class="list">${g.map(([k, l, ic, col]) => `<button class="cell ic" data-x="${k}"><span class="icon-sq" style="background:${col}">${ic}</span><span class="grow">${l}</span>${k === "promotions" ? `<span class="val">${["lastMinute", "welcome", "repeat", "group"].filter(x => S.promos[x]).length} on</span>` : k === "photos" ? `<span class="val">${PHOTOS.length}</span>` : ""}<span class="chev">${I.chev}</span></button>`).join("")}</div>`).join("")}`;
+  app.querySelector("#me").onclick = () => go({ p: "profileC", title: "Extras" });
+  app.querySelectorAll("[data-x]").forEach(b => b.onclick = () => go({ p: b.dataset.x, title: "Extras" }));
+};
+PAGES.earnings = () => {
+  const acc = S.bookings.filter(b => b.chefId === "you" && b.status === "accepted");
+  const me = acc.reduce((a, b) => a + quote(menuOf(b), b.guests).chefGets, 0), rival = me * (1 - S.brand.rivalCommission / 100);
+  const pre = S.popups.filter(p => p.chefId === "you").reduce((a, p) => a + p.items.reduce((x, it, i) => x + it.price * (p.sold[i] || 0), 0), 0);
+  app.innerHTML = `<h1 class="large">Earnings</h1>
+    <div class="result"><span class="fn muted">Booked income</span><b class="num">${money(me + pre)}</b><span class="fn muted num">${money(me)} dinners · ${money(pre)} pop-up pre-orders</span></div>
+    <div class="list" style="padding:16px;display:grid;gap:12px"><b>You keep 100% of your menu price</b>
+      <div class="bars num"><div class="bar"><span>${esc(S.brand.name)}</span><i style="width:100%"></i><b>${money(me)}</b></div><div class="bar"><span>${S.brand.rivalCommission}% app</span><i class="alt" style="width:${(1 - S.brand.rivalCommission / 100) * 100}%"></i><b>${money(rival)}</b></div></div>
+      <span class="fn muted">Guests pay a ${S.brand.feePct}% service fee on top. Guests who book through your own link pay no fee.</span></div>
+    <div><div class="list-h">Payouts</div><div class="list">${acc.map(b => `<div class="cell"><span class="grow">${esc(b.client)}<div class="cap muted">${fmtDate(b.date)} · ${b.guests} guests</div></span><b class="num">${money(quote(menuOf(b), b.guests).chefGets)}</b></div>`).join("") || `<div class="cell muted">No confirmed dinners yet.</div>`}</div></div>`;
+};
+PAGES.menus = () => {
+  const c = you();
+  app.innerHTML = `<h1 class="large">Menus & prices</h1><div class="fn muted">One all-in price per guest. Guests book instantly, so you never write a proposal for someone who won't book.</div>
+    ${c.menus.map((m, i) => `<div class="list" style="padding:14px;display:grid;gap:10px">
+      <div class="field"><label for="mn${i}">Menu name</label><input id="mn${i}" data-mi="${i}" data-f="name" value="${esc(m.name)}"></div>
+      <div class="row"><div class="field grow"><label for="mp${i}">Price / guest</label><input id="mp${i}" type="number" inputmode="decimal" data-mi="${i}" data-f="price" value="${m.price}"></div><div class="field grow"><label for="mm${i}">Min guests</label><input id="mm${i}" type="number" inputmode="numeric" data-mi="${i}" data-f="min" value="${m.min}"></div></div>
+      <div class="field"><label for="mc${i}">Courses, one per line</label><textarea id="mc${i}" data-mi="${i}" data-f="courses">${esc(m.courses.join("\n"))}</textarea></div>
+      <button class="btn sm dest" data-del="${i}" style="justify-self:start">Delete menu</button></div>`).join("")}
+    <button class="btn block tint" id="add">Add menu</button>`;
+  app.querySelectorAll("[data-mi]").forEach(el => el.oninput = () => { const m = c.menus[+el.dataset.mi], f = el.dataset.f; m[f] = f === "courses" ? el.value.split("\n").filter(Boolean) : f === "name" ? el.value : Math.max(0, +el.value || 0); save(); });
+  app.querySelectorAll("[data-del]").forEach(b => armed(b, "Tap again to delete", () => { if (c.menus.length <= 1) return toast("Keep at least one menu"); c.menus.splice(+b.dataset.del, 1); save(); render(); }));
   app.querySelector("#add").onclick = () => { c.menus.push({ id: uid(), name: "New menu", price: 75, min: 4, courses: ["Starter", "Main", "Dessert"] }); save(); render(); };
 };
-
-SCREENS.profile = () => {
-  const c = you(), b = S.brand;
-  app.innerHTML = `<div><span class="eyebrow">Your profile</span><h2>How clients see you</h2></div>
-    <div class="card stack">
-      <div class="grid2"><div><label for="pn">Name</label><input id="pn" data-p="name" value="${esc(c.name)}"></div><div><label for="pa">Area</label><input id="pa" data-p="area" value="${esc(c.area)}"></div></div>
-      <div><label for="pc">Cuisine / style</label><input id="pc" data-p="cuisine" value="${esc(c.cuisine)}"></div>
-      <div><label for="pb">Bio</label><textarea id="pb" data-p="bio">${esc(c.bio)}</textarea></div>
-      <label class="tick"><input type="checkbox" id="tn" ${c.tonight ? "checked" : ""}> I'm free tonight (shows a badge to clients)</label>
-      <button class="btn ghost" id="view">Preview my public page</button></div>
-    <div class="card stack"><h3>Your direct booking link</h3>
-      <div class="sm muted">Put it in your Instagram bio. Clients you bring yourself pay <b>0% commission</b>, because your clients stay yours.</div>
-      <input readonly id="link" value="${esc((b.name || "chef").toLowerCase().replace(/\W+/g, ""))}.com/${esc(c.name.toLowerCase().replace(/\W+/g, "-"))}">
-      <button class="btn sm dark" id="cp" style="justify-self:start">Copy link</button></div>
-    <div class="card stack"><h3>Platform brand</h3>
-      <div class="sm muted">Rename the whole platform whenever your brand is ready.</div>
-      <div class="grid2"><div><label for="bn">Brand name</label><input id="bn" value="${esc(b.name)}"></div><div><label for="bc">Currency</label><input id="bc" value="${esc(b.currency)}"></div></div>
-      <button class="btn ghost sm" id="reset" style="justify-self:start">Reset demo data</button></div>`;
+PAGES.promotions = () => {
+  const p = S.promos;
+  const row = (k, t, s) => `<div class="cell"><span class="grow">${t}<div class="cap muted">${s}</div></span><label class="switch"><input type="checkbox" data-pr="${k}" ${p[k] ? "checked" : ""} aria-label="${t}"><span></span></label></div>`;
+  app.innerHTML = `<h1 class="large">Promotions</h1><div class="fn muted">Fill empty nights and win repeat guests. Guests see these on Discover and at checkout.</div>
+    <div><div class="list-h">Fill your calendar</div><div class="list">${row("lastMinute", "Tonight deal, 15% off", "A red badge shows when you're free tonight")}${row("group", "Groups of 12+, 10% off", "Attracts birthdays and team events")}</div></div>
+    <div><div class="list-h">Win and keep guests</div><div class="list">${row("welcome", `First dinner ${money(S.brand.welcome)} off`, "Paid by the platform, not you")}${row("repeat", "Free dessert for returning guests", "Shown on your profile")}</div></div>
+    <div><div class="list-h">Your promo code · 10% off</div><div class="list"><div class="cell"><label class="grow" for="pcode">Code</label><input id="pcode" value="${esc(p.code)}" autocapitalize="characters"></div></div><div class="list-f">Share it on Instagram, flyers and at your stall.</div></div>
+    <div><div class="list-h">Marketing that works</div><div class="list">${[["Post a 15-second reel of every dinner", "Plating, flames, a happy table (with the host's OK)"], ["Leave a card with a QR code", "\"Book again\" plus your free-dessert offer"], ["Partner with Airbnb hosts & villas", "Offer their guests your welcome deal"], ["Run a stall every month", "Pop-up guests become private-dinner clients"], ["Ask for a review the next morning", "Reviews are the main reason guests choose a chef"]].map(([a, b]) => `<div class="cell"><span class="grow">${a}<div class="cap muted">${b}</div></span></div>`).join("")}</div></div>`;
+  app.querySelectorAll("[data-pr]").forEach(x => x.onchange = () => { p[x.dataset.pr] = x.checked; save(); toast(x.checked ? "Promotion on" : "Promotion off"); });
+  app.querySelector("#pcode").oninput = e => { p.code = e.target.value.toUpperCase(); save(); };
+};
+PAGES.photos = () => {
+  app.innerHTML = `<h1 class="large">Photos</h1><div class="fn muted">Real photos of your food and dinners win more bookings. They lead the Discover slider and your profile. Bright, close-up shots work best.</div>
+    <div class="photos">${PHOTOS.map((src, i) => `<div class="ph"><img src="${src}" alt="Your photo ${i + 1}"><button data-rm="${i}" aria-label="Remove photo ${i + 1}">✕</button></div>`).join("")}${PHOTOS.length < 6 ? `<label class="ph add" aria-label="Add photos">+<input type="file" accept="image/*" id="up" hidden multiple></label>` : ""}</div>
+    <div class="list-f">Up to 6 photos, stored on this device only.</div>`;
+  app.querySelectorAll("[data-rm]").forEach(b => armed(b, "Remove?", () => { PHOTOS.splice(+b.dataset.rm, 1); savePhotos(); render(); }));
+  const up = app.querySelector("#up");
+  if (up) up.onchange = async () => {
+    let added = 0;
+    for (const f of [...up.files].slice(0, 6 - PHOTOS.length)) {
+      const src = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(f); });
+      const img = src && await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+      if (!img) continue;
+      const sc = Math.min(1, 1000 / Math.max(img.width, img.height)), cv = document.createElement("canvas");
+      cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      PHOTOS.push(cv.toDataURL("image/jpeg", .72)); added++;
+      if (!savePhotos()) { PHOTOS.pop(); added--; toast("Storage is full. Remove a photo first"); break; }
+    }
+    if (added) toast(added === 1 ? "Photo added" : added + " photos added");
+    render();
+  };
+};
+PAGES.popupsC = () => {
+  const pops = S.popups.filter(p => p.chefId === "you");
+  app.innerHTML = `<h1 class="large">Pop-ups & pre-orders</h1><div class="fn muted">Pre-orders tell you how much to cook. Prep amounts include a buffer for walk-ups.</div>
+    ${pops.map(p => { const rev = p.items.reduce((a, it, i) => a + it.price * (p.sold[i] || 0), 0); return `<div><div class="list-h">${esc(p.title)} · ${fmtDate(p.date)}</div><div class="list">${p.items.map((it, i) => `<div class="cell"><span class="grow">${esc(it.name)}<div class="cap muted">${p.sold[i] || 0} pre-ordered</div></span><span class="val">Prep <b style="color:var(--ink)">${Math.ceil((p.sold[i] || 0) * 1.6)}</b></span></div>`).join("")}<div class="cell"><b class="grow">Pre-sold</b><b class="num">${money(rev)}</b></div></div></div>`; }).join("")}
+    <button class="btn block tint" id="np">New pop-up</button>`;
+  app.querySelector("#np").onclick = () => openSheet("New pop-up", `<div class="field"><label for="pt">Name</label><input id="pt" placeholder="e.g. Friday supper club"></div><div class="field"><label for="pl">Place</label><input id="pl"></div><div class="field"><label for="pd">Date</label><input type="date" id="pd" value="${day(10)}"></div><div class="field"><label for="pi">Items (name, price), one per line</label><textarea id="pi">Short rib bao, 9
+Fries, 4</textarea></div><button class="btn block" id="ok">Publish pop-up</button>`, api => api.body.querySelector("#ok").onclick = () => {
+    const $ = s => api.body.querySelector(s);
+    const items = $("#pi").value.split("\n").map(l => l.split(",")).filter(x => x[0].trim()).map(([n, pr]) => ({ name: n.trim(), price: +pr || 0 }));
+    S.popups.push({ id: uid(), chefId: "you", title: $("#pt").value || "Pop-up", place: $("#pl").value || "TBC", date: $("#pd").value || day(10), time: "18:00–22:00", items, sold: {} }); save(); api.close(); toast("Pop-up published"); render(); });
+};
+PAGES.profileC = () => {
+  const c = you(), link = `${S.brand.name.toLowerCase().replace(/\W+/g, "")}.com/${c.name.toLowerCase().replace(/\W+/g, "-")}`;
+  app.innerHTML = `<h1 class="large">Profile</h1>
+    <div class="list" style="padding:14px;display:grid;gap:10px">
+      <div class="field"><label for="pn">Name</label><input id="pn" data-p="name" value="${esc(c.name)}"></div>
+      <div class="row"><div class="field grow"><label for="pa">Area</label><input id="pa" data-p="area" value="${esc(c.area)}"></div><div class="field grow"><label for="pc">Cuisine</label><input id="pc" data-p="cuisine" value="${esc(c.cuisine)}"></div></div>
+      <div class="field"><label for="pb">Bio</label><textarea id="pb" data-p="bio">${esc(c.bio)}</textarea></div></div>
+    <div class="list"><div class="cell"><span class="grow">Free tonight<div class="cap muted">Shows you under "Free tonight" on Discover</div></span><label class="switch"><input type="checkbox" id="tn" ${c.tonight ? "checked" : ""} aria-label="Free tonight"><span></span></label></div></div>
+    <div><div class="list-h">Direct booking link · 0% fees</div><div class="list"><div class="cell"><span class="grow fn" style="word-break:break-all">${esc(link)}</span><button class="btn sm tint" id="cp">Copy</button></div></div><div class="list-f">Put it in your Instagram bio. Guests you bring yourself pay no service fee.</div></div>
+    <button class="btn block plain" id="pv">Preview as a guest</button>`;
   app.querySelectorAll("[data-p]").forEach(el => el.oninput = () => { c[el.dataset.p] = el.value; save(); });
   app.querySelector("#tn").onchange = e => { c.tonight = e.target.checked; save(); };
-  app.querySelector("#bn").oninput = e => { b.name = e.target.value || "Chef on Call"; save(); document.getElementById("brand").textContent = b.name; };
-  app.querySelector("#bc").oninput = e => { b.currency = e.target.value || "$"; save(); };
-  app.querySelector("#view").onclick = () => { V.side = "client"; V.tab = "find"; V.stack = [{ s: "chef", id: "you" }]; render(); };
-  app.querySelector("#cp").onclick = () => { const v = app.querySelector("#link").value; try { navigator.clipboard.writeText(v).then(() => toast("Copied"), () => app.querySelector("#link").select()); } catch (_) { app.querySelector("#link").select(); } };
-  armed(app.querySelector("#reset"), "Tap again to reset", () => { S = seed(); save(); toast("Demo reset"); render(); });
+  app.querySelector("#cp").onclick = () => copy(link, "Link copied");
+  app.querySelector("#pv").onclick = () => { V.role = "guest"; V.tab = "discover"; V.stack = [{ p: "chef", id: "you", title: "Discover" }]; render(); };
 };
-
-/* ================= PLAN SIDE ================= */
-SCREENS.why = () => {
-  app.innerHTML = `<div><span class="eyebrow">Research · what goes wrong today</span><h2>Booking a chef is still a mess</h2></div>
-    <div class="card"><h3 style="margin-bottom:4px">Chef pain</h3>
-      ${[["%", "Apps take 18–25% of every booking", "Marketplace chefs report commissions of 18–25%, and long-time chefs on platforms say the cut is too high."],
-         ["✎", "Unpaid proposal work", "On request-based apps several chefs write custom menus for the same client. Most of them get nothing, and some report fake or low-quality requests."],
-         ["🛒", "Grocery risk", "Grocery prices move, so quoting is hard. Chefs who buy food before a late cancellation lose money."],
-         ["✗", "Cancellations & non-payment", "Chefs share stories of last-minute cancellations, chargebacks and clients who never paid."],
-         ["☁", "Pop-ups & booths are a gamble", "Weather and footfall swing sales from one event to the next, so chefs over-prep or sell out early."]]
-        .map(([i, t, p]) => `<div class="pain"><div class="ic">${i}</div><div><b>${t}</b><p>${p}</p></div></div>`).join("")}</div>
-    <div class="card"><h3 style="margin-bottom:4px">Client pain</h3>
-      ${[["$", "“What will it actually cost?”", "Groceries are often billed on top, so the final price is a surprise. Clients compare day rates against per-head prices and get confused."],
-         ["⏱", "Slow back-and-forth", "Clients send a request, wait for proposals, then negotiate. That takes days to book a Saturday dinner."],
-         ["⚠", "Trust & allergies", "Hosts let a stranger into their home and kitchen and trust them with guests' allergies."],
-         ["🔥", "Kitchen surprises", "Clients don't know what the chef needs (oven, hob, plates), so problems show up on the night."]]
-        .map(([i, t, p]) => `<div class="pain"><div class="ic">${i}</div><div><b>${t}</b><p>${p}</p></div></div>`).join("")}</div>
-    <div class="card stack"><h3>Our answer</h3>
-      <div class="sm"><b>Instant, all-in price.</b> Chefs publish fixed menus with groceries included. Clients book like a hotel room, with no proposals.</div>
-      <div class="sm"><b>Deposit + clear cancellation rules</b> protect the chef's grocery money.</div>
-      <div class="sm"><b>Kitchen & allergy check at booking.</b> The chef arrives prepared, and allergies show in red.</div>
-      <div class="sm"><b>Chef keeps 100% of the menu price.</b> The client pays a ${S.brand.feePct}% fee, and clients a chef brings in pay 0%.</div>
-      <div class="sm"><b>Pre-orders for pop-ups & booths</b> turn a gamble into guaranteed sales and accurate prep.</div>
-      <div class="sm"><b>Trust badges:</b> hygiene cert, insurance, allergen training and ID, plus reviews only from paid bookings.</div></div>
-    <div class="xs muted">Sources: <a href="https://www.trustpilot.com/review/takeachef.com?page=3" target="_blank" rel="noopener">Take a Chef reviews</a> · <a href="https://www.takeachef.com/en-en/faqs" target="_blank" rel="noopener">Take a Chef FAQ</a> · <a href="https://www.trustpilot.com/review/yhangry.com?page=2" target="_blank" rel="noopener">Yhangry reviews</a> · <a href="https://yhangry.com/become-a-yhangry-chef/" target="_blank" rel="noopener">Yhangry chef page</a> · <a href="https://www.sharetribe.com/create/how-to-build-marketplace-for-personal-chefs/" target="_blank" rel="noopener">Sharetribe</a> · <a href="https://www.buzzsprout.com/2414748/episodes/16770456-deposits-payment-methods-and-payment-horror-stories-what-every-personal-chef-needs-to-know" target="_blank" rel="noopener">Personal chef podcast</a> · <a href="https://girlandthekitchen.com/faq/" target="_blank" rel="noopener">Chef FAQ</a> · <a href="https://companiesmadesimple.com/blogs/small-business-advice/start-street-food-business-uk" target="_blank" rel="noopener">Street food guide</a> · <a href="https://www.zenbusiness.com/start-a-business/food-service/pop-up-restaurant/" target="_blank" rel="noopener">Pop-up guide</a></div>`;
+PAGES.brand = () => {
+  const b = S.brand;
+  app.innerHTML = `<h1 class="large">Brand & settings</h1>
+    <div><div class="list-h">Brand</div><div class="list"><div class="cell"><label class="grow" for="bn">Name</label><input id="bn" value="${esc(b.name)}"></div><div class="cell"><label class="grow" for="bc">Currency</label><input id="bc" value="${esc(b.currency)}" style="max-width:60px"></div></div><div class="list-f">Rename the whole platform when your brand is ready.</div></div>
+    <div><div class="list-h">Platform rules</div><div class="list"><div class="cell"><label class="grow" for="bf">Guest service fee</label><input type="number" id="bf" value="${b.feePct}" style="max-width:60px"><span class="val">%</span></div><div class="cell"><label class="grow" for="bd">Deposit</label><input type="number" id="bd" value="${b.depositPct}" style="max-width:60px"><span class="val">%</span></div></div></div>
+    <div class="list"><button class="cell" id="reset" style="color:var(--bad)">Reset demo data</button></div>`;
+  const bind = (id, f) => app.querySelector(id).oninput = e => { f(e.target.value); save(); };
+  bind("#bn", v => b.name = v || "Chef on Call"); bind("#bc", v => b.currency = v || "$"); bind("#bf", v => b.feePct = Math.max(0, +v || 0)); bind("#bd", v => b.depositPct = Math.min(100, Math.max(0, +v || 0)));
+  armed(app.querySelector("#reset"), "Tap again to reset everything", () => { S = seed(); save(); toast("Demo reset"); V.stack = []; render(); });
 };
-
-SCREENS.model = () => {
+let planSeg = "problem";
+PAGES.plan = () => {
   const avg = 8 * 85, fee = avg * S.brand.feePct / 100;
-  app.innerHTML = `<div><span class="eyebrow">Business model</span><h2>How the platform makes money</h2></div>
-    <div class="card"><h3 style="margin-bottom:6px">One typical dinner (8 guests × ${money(85)})</h3><table class="num">
-      <tr><td>Client pays</td><td>${money(avg + fee)}</td></tr>
-      <tr><td>Chef receives (100% of menu)</td><td>${money(avg)}</td></tr>
-      <tr class="tot"><td>Platform revenue (${S.brand.feePct}% client fee)</td><td>${money(fee)}</td></tr>
-      <tr><td class="muted">Same dinner on a ${S.brand.rivalCommission}% app: chef receives</td><td class="muted">${money(avg * (1 - S.brand.rivalCommission / 100))}</td></tr></table></div>
-    <div class="card stack"><h3>Revenue streams</h3>
-      <div class="sm"><b>1. Client service fee (${S.brand.feePct}%)</b> on every marketplace booking.</div>
-      <div class="sm"><b>2. Chef Pro plan (~${money(19)}/month):</b> own booking link at 0% commission, pop-up pre-orders, client CRM, costing tools. This is the tool chefs use even for clients they found themselves.</div>
-      <div class="sm"><b>3. Add-ons:</b> plate & equipment rental, waiter staffing, wine pairing partners (referral fee).</div>
-      <div class="sm"><b>4. Corporate & venue deals:</b> Airbnb hosts, villas, event planners and offices booking repeat chef nights.</div></div>
-    <div class="card stack"><h3>Simple year-one target (one city)</h3>
-      <table class="num"><tr><td>Active chefs</td><td>40</td></tr><tr><td>Bookings / chef / month</td><td>3</td></tr>
-      <tr><td>Marketplace fees / year</td><td>${money(40 * 3 * 12 * fee)}</td></tr><tr><td>Pro plans (25 × ${money(19)} × 12)</td><td>${money(25 * 19 * 12)}</td></tr>
-      <tr class="tot"><td>Year-one revenue</td><td>${money(40 * 3 * 12 * fee + 25 * 19 * 12)}</td></tr></table>
-      <div class="xs muted">These are illustrative assumptions to test, not forecasts.</div></div>
-    <div class="card stack"><h3>Why a chef starts it, not a tech company</h3>
-      <div class="sm">You know what a good chef looks like, you can recruit the first 20 from your own network, and you can test every feature on your own gigs first. Chef-led trust is the marketing angle: <i>"built by a chef, for chefs."</i></div></div>`;
-};
-
-SCREENS.roadmap = () => {
-  app.innerHTML = `<div><span class="eyebrow">Roadmap</span><h2>Start small, prove it, then scale</h2></div>
-    <div class="card">
-      ${[["Month 1", "Be chef #1", "Use your own booking page for your own gigs. Take deposits with a payment link (Stripe or similar). Collect allergy and kitchen info with the same form. Goal: 5 paid bookings, and learn what clients ask."],
-         ["Month 2–3", "Recruit 10–20 chefs", "Start with chefs you know: private chefs, pop-up and booth cooks. Offer them free Pro for 6 months. Manually match client requests in one city (concierge MVP, no code needed)."],
-         ["Month 3–4", "Find demand", "Instagram and TikTok content: “what a $85/head dinner looks like”. Partner with 5 Airbnb hosts or villas and 2 event planners. Run pop-up pre-orders at your own booth."],
-         ["Month 5–6", "Build the real app", "Once 30+ bookings are flowing manually, build accounts, payments, payouts and reviews. Use a marketplace builder (e.g. Sharetribe) before custom code."],
-         ["Month 6+", "Brand & expand", "Pick the final brand name, get insurance and terms reviewed by a lawyer, then open city #2 with the same playbook."]]
-        .map(([w, t, p]) => `<div class="phase"><b class="when">${w}</b><div><b>${t}</b><div class="sm muted">${p}</div></div></div>`).join("")}</div>
-    <div class="card stack"><h3>Numbers to watch</h3>
-      <div class="sm">• Request → booking rate (aim for over 40%; instant pricing should beat proposals)</div>
-      <div class="sm">• Repeat bookings within 6 months</div>
-      <div class="sm">• Chef payout per booking vs other apps</div>
-      <div class="sm">• Cancellations and allergy incidents (target zero)</div></div>
-    <div class="note">This is a clickable prototype for demos. It runs on this device, and payments are pretend. Show it to 10 chefs and 10 hosts this month and note what they say.</div>`;
+  const rows = arr => arr.map(([a, b]) => `<div class="cell"><span class="grow">${a}<div class="cap muted">${b}</div></span></div>`).join("");
+  const body = {
+    problem: `<div><div class="list-h">Chef pain</div><div class="list">${rows([["Apps take 18–25% of every booking", "Reported in Take a Chef and Yhangry reviews"], ["Unpaid proposal work", "Several chefs write menus for one request. Most get nothing."], ["Grocery risk", "Prices move, and a late cancellation after shopping costs money"], ["Cancellations & non-payment", "Chefs share stories of chargebacks and clients who never paid"], ["Pop-ups are a gamble", "Weather and footfall swing sales from one event to the next"]])}</div></div>
+      <div><div class="list-h">Guest pain</div><div class="list">${rows([["\"What will it actually cost?\"", "Groceries are often billed on top"], ["Days of back-and-forth", "Request, proposals, negotiation"], ["Trust & allergies", "A stranger in the kitchen, cooking for guests with allergies"], ["Kitchen surprises", "Nobody checked the oven or the plates"]])}</div></div>
+      <div class="list-f">Sources: <a href="https://www.trustpilot.com/review/takeachef.com?page=3" target="_blank" rel="noopener">Take a Chef reviews</a>, <a href="https://www.takeachef.com/en-en/faqs" target="_blank" rel="noopener">Take a Chef FAQ</a>, <a href="https://www.trustpilot.com/review/yhangry.com?page=2" target="_blank" rel="noopener">Yhangry reviews</a>, <a href="https://yhangry.com/become-a-yhangry-chef/" target="_blank" rel="noopener">Yhangry chef page</a>, <a href="https://www.sharetribe.com/create/how-to-build-marketplace-for-personal-chefs/" target="_blank" rel="noopener">Sharetribe</a>, <a href="https://girlandthekitchen.com/faq/" target="_blank" rel="noopener">Chef FAQ</a>, <a href="https://companiesmadesimple.com/blogs/small-business-advice/start-street-food-business-uk" target="_blank" rel="noopener">Street food guide</a></div>`,
+    model: `<div class="list" style="padding:14px 16px"><table class="sum num"><tr><td>Guest pays (8 × ${money(85)} + fee)</td><td>${money(avg + fee)}</td></tr><tr><td>Chef receives (100%)</td><td>${money(avg)}</td></tr><tr class="tot"><td>Platform revenue</td><td>${money(fee)}</td></tr></table></div>
+      <div><div class="list-h">Revenue streams</div><div class="list">${rows([["Guest service fee", S.brand.feePct + "% on every booking"], ["Chef Pro plan", "About " + money(19) + "/month: own link, pre-orders, tools"], ["Add-ons", "Plate rental, waiters, wine partners"], ["Corporate & venues", "Offices, Airbnb hosts, villas"], ["Gift cards", "Cash up front, and they bring new guests"]])}</div></div>
+      <div class="list-f">Example year one in one city: 40 chefs × 3 bookings a month ≈ ${money(40 * 3 * 12 * fee)} in fees, plus Pro plans. These are assumptions to test, not a forecast.</div>`,
+    roadmap: `<div class="list" style="padding:16px">${[["M1", "Be chef #1: run your own gigs through this flow and take deposits with a payment link"], ["M2–3", "Recruit 10–20 chefs you know, give them free Pro for 6 months, and match guests by hand"], ["M3–4", "Post reels of every dinner, sign 5 Airbnb or villa partners, take pre-orders at your stall"], ["M5–6", "Once 30+ bookings come through, build the real app (start with a marketplace builder)"], ["M6+", "Pick the final brand, get terms and insurance checked by a lawyer, then open city #2"]].map(([a, b]) => `<div class="tl"><span class="t">${a}</span><span class="dot"></span><span class="fn">${b}</span></div>`).join("")}</div>`,
+  };
+  app.innerHTML = `<h1 class="large">Business plan</h1><div class="seg full">${[["problem", "Problem"], ["model", "Model"], ["roadmap", "Roadmap"]].map(([k, l]) => `<button data-ps="${k}" class="${planSeg === k ? "on" : ""}">${l}</button>`).join("")}</div>${body[planSeg]}`;
+  app.querySelectorAll("[data-ps]").forEach(b => b.onclick = () => { planSeg = b.dataset.ps; render(); });
 };
 
 render();
