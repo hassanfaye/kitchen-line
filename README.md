@@ -18,3 +18,6 @@ A pocket business tool for **private chefs, pop-ups and market booths**. One fil
 Open `index.html` in a browser, or turn on GitHub Pages (Settings → Pages → branch `main`, root) and add it to your phone's home screen.
 
 Data is saved on the device. Use **Brand → Download backup** regularly.
+
+## SUBTEXTUR app prototype (`platform/index.html`)
+The chefs' table app by SUBTEXTUR (A LINESAP COMPANY): guests discover chefs, book dinners and pre-order numbered drops; chefs manage bookings, tools and extras. Night-mode identity: halftone S logo, Archivo wide + JetBrains Mono, espresso-black, bone and ember. Booking confirmations come out as a ticket. Prototype only: data stays on the device and payments are pretend.
